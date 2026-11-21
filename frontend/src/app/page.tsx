@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 type SpeechRecognitionAlternativeLike = {
   transcript: string;
@@ -39,6 +39,12 @@ type WindowWithSpeechRecognition = Window & {
   webkitSpeechRecognition?: SpeechRecognitionConstructor;
 };
 
+type ChatMessage = {
+  id: number;
+  sender: "user" | "assistant";
+  text: string;
+};
+
 const categories = [
   {
     title: "Agriculture",
@@ -73,7 +79,33 @@ export default function Home() {
   const [voiceMessage, setVoiceMessage] = useState("");
   const [isListening, setIsListening] = useState(false);
 
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isThinking, setIsThinking] = useState(false);
+
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  // Reference to the bottom of the chat
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Reference to the pending mock AI response timer
+  const responseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Automatically scroll to the latest chat content
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [messages, isThinking]);
+
+  // Clear any pending response timer when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (responseTimerRef.current !== null) {
+        clearTimeout(responseTimerRef.current);
+      }
+    };
+  }, []);
 
   const startVoiceInput = () => {
     const browserWindow = window as WindowWithSpeechRecognition;
@@ -153,6 +185,96 @@ export default function Home() {
       setIsListening(false);
       setVoiceMessage("Unable to start microphone. Please try again.");
     }
+  };
+
+  // Temporary mock AI responses until backend integration
+  const getMockResponse = () => {
+    if (language === "Telugu") {
+      return `మీ ప్రశ్న అందింది! 🙏
+
+${
+  selectedCategory
+    ? `${selectedCategory} విభాగానికి సంబంధించిన మీ ప్రశ్నను మేము గుర్తించాము.`
+    : "మీ ప్రశ్నను మేము గుర్తించాము."
+}
+
+ఇది ప్రస్తుతం డెమో సమాధానం మాత్రమే. నిజమైన AI సహాయకుడిని త్వరలో అనుసంధానిస్తాము. మరింత ఖచ్చితమైన సమాచారం కోసం మీ ప్రశ్నకు సంబంధించిన వివరాలను తెలియజేయండి.`;
+    }
+
+    if (language === "Hindi") {
+      return `आपका प्रश्न प्राप्त हुआ! 🙏
+
+${
+  selectedCategory
+    ? `हमने आपके ${selectedCategory} से संबंधित प्रश्न को पहचाना है।`
+    : "हमने आपका प्रश्न समझ लिया है।"
+}
+
+यह अभी एक डेमो उत्तर है। वास्तविक AI सहायक जल्द ही जोड़ा जाएगा। अधिक सटीक जानकारी के लिए कृपया अपने प्रश्न के बारे में कुछ और विवरण दें।`;
+    }
+
+    return `Your question has been received! 🙏
+
+${
+  selectedCategory
+    ? `We have identified your question under ${selectedCategory}.`
+    : "We have received your question."
+}
+
+This is currently a demo response. The real AI assistant will be connected soon. Please provide a little more detail about your question for more specific guidance.`;
+  };
+
+  const handleSendMessage = () => {
+    const trimmedQuestion = question.trim();
+
+    if (!trimmedQuestion || isThinking) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now(),
+      sender: "user",
+      text: trimmedQuestion,
+    };
+
+    setMessages((previousMessages) => [
+      ...previousMessages,
+      userMessage,
+    ]);
+
+    setQuestion("");
+    setVoiceMessage("");
+    setIsThinking(true);
+
+    // Simulate AI response delay and store the timer
+    responseTimerRef.current = setTimeout(() => {
+      const assistantMessage: ChatMessage = {
+        id: Date.now() + 1,
+        sender: "assistant",
+        text: getMockResponse(),
+      };
+
+      setMessages((previousMessages) => [
+        ...previousMessages,
+        assistantMessage,
+      ]);
+
+      setIsThinking(false);
+
+      // Timer has completed
+      responseTimerRef.current = null;
+    }, 1500);
+  };
+
+  // Start a fresh conversation and cancel any pending response
+  const handleNewChat = () => {
+    if (responseTimerRef.current !== null) {
+      clearTimeout(responseTimerRef.current);
+      responseTimerRef.current = null;
+    }
+
+    setMessages([]);
+    setIsThinking(false);
+    setQuestion("");
+    setVoiceMessage("");
   };
 
   return (
@@ -275,6 +397,72 @@ export default function Home() {
         )}
       </section>
 
+      {/* Chat conversation */}
+      {messages.length > 0 && (
+        <section className="chat-section">
+          <div className="chat-heading">
+            <div>
+              <span className="section-label">YOUR CONVERSATION</span>
+              <h2>Chat with Grama Sahayak</h2>
+            </div>
+
+            <button
+              className="new-chat-button"
+              onClick={handleNewChat}
+            >
+              + New Chat
+            </button>
+          </div>
+
+          <div className="chat-messages">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`chat-message ${
+                  message.sender === "user"
+                    ? "user-message"
+                    : "assistant-message"
+                }`}
+              >
+                <div className="message-avatar">
+                  {message.sender === "user" ? "👤" : "🌿"}
+                </div>
+
+                <div className="message-content">
+                  <span className="message-sender">
+                    {message.sender === "user"
+                      ? "You"
+                      : "Grama Sahayak"}
+                  </span>
+
+                  <p>{message.text}</p>
+                </div>
+              </div>
+            ))}
+
+            {isThinking && (
+              <div className="chat-message assistant-message thinking-message">
+                <div className="message-avatar">🌿</div>
+
+                <div className="message-content">
+                  <span className="message-sender">Grama Sahayak</span>
+                  <p className="thinking-text">
+                    Thinking<span className="thinking-dots">...</span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Automatic scroll target */}
+            <div ref={chatEndRef} />
+          </div>
+
+          <p className="demo-notice">
+            Demo mode — responses are mock responses, not verified guidance.
+          </p>
+        </section>
+      )}
+
       {/* Question input */}
       <section className="question-section">
         <div className="question-box">
@@ -284,22 +472,21 @@ export default function Home() {
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSendMessage();
+              }
+            }}
             placeholder="Type your question here..."
             aria-label="Type your question"
           />
 
           <button
             className="send-button"
-            disabled={!question.trim()}
-            onClick={() => {
-              if (question.trim()) {
-                alert(
-                  "Your question is ready for backend integration. We will connect the AI next!"
-                );
-              }
-            }}
+            disabled={!question.trim() || isThinking}
+            onClick={handleSendMessage}
           >
-            Send <span>➤</span>
+            {isThinking ? "..." : "Send"} <span>➤</span>
           </button>
         </div>
 
