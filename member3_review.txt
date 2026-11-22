@@ -1,0 +1,2154 @@
+========== VOICE API ==========
+"""
+Voice API Router for AI Grama Sahayak
+Author: Member 3
+Prefix: /voice (so when registered by Member 1's main.py under /api, final paths are /api/voice/*)
+Endpoints:
+  POST /api/voice/transcribe
+  POST /api/voice/speak
+Adheres strictly to docs/api_contracts.md
+"""
+
+import logging
+from fastapi import APIRouter, UploadFile, File, Form, status
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Optional
+
+from app.services.voice.transcription import VoiceTranscriptionService, VoiceServiceException, MAX_AUDIO_SIZE_BYTES
+from app.services.voice.synthesis import VoiceSynthesisService
+
+logger = logging.getLogger("voice.api")
+
+# Router prefix is /voice so Member 1's main.py can supply prefix="/api"
+router = APIRouter(prefix="/voice", tags=["voice"])
+
+transcription_service = VoiceTranscriptionService()
+synthesis_service = VoiceSynthesisService()
+
+CHUNK_SIZE = 64 * 1024  # 64 KB chunks for safe streaming read
+
+
+class VoiceSpeakRequest(BaseModel):
+    text: str = Field(..., description="Text to synthesize into speech")
+    language: str = Field("en", description="Language code: 'en' or 'te'")
+
+
+def error_response(code: str, message: str, status_code: int, details: Optional[list] = None) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": {
+                "code": code,
+                "message": message,
+                "details": details or []
+            }
+        }
+    )
+
+
+@router.post("/transcribe")
+async def transcribe_voice(
+    file: UploadFile = File(..., description="Audio file to transcribe"),
+    language: str = Form("en", description="Target language ('te' or 'en')")
+):
+    """
+    POST /api/voice/transcribe
+    Transcribes uploaded audio file to text in Telugu or English.
+    """
+    try:
+        # Enforce 15 MB limit incrementally while reading
+        file_bytes = bytearray()
+        while True:
+            chunk = file.file.read(CHUNK_SIZE) if hasattr(file, "file") else await file.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            file_bytes.extend(chunk)
+            if len(file_bytes) > MAX_AUDIO_SIZE_BYTES:
+                return error_response(
+                    code="PAYLOAD_TOO_LARGE",
+                    message=f"Audio file size exceeds the maximum allowed limit of {MAX_AUDIO_SIZE_BYTES // (1024 * 1024)} MB.",
+                    status_code=413,
+                    details=[{"field": "file", "issue": "Exceeds 15MB limit"}]
+                )
+
+        result = await transcription_service.transcribe(
+            filename=file.filename,
+            content_type=file.content_type,
+            file_bytes=bytes(file_bytes),
+            language=language
+        )
+        return result
+    except VoiceServiceException as ve:
+        return error_response(
+            code=ve.code,
+            message=ve.message,
+            status_code=ve.status_code,
+            details=ve.details
+        )
+    except Exception:
+        logger.exception("Unexpected server error in transcribe_voice")
+        return error_response(
+            code="INTERNAL_SERVER_ERROR",
+            message="An internal server error occurred while processing the audio transcription.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@router.post("/speak")
+async def speak_voice(request: VoiceSpeakRequest):
+    """
+    POST /api/voice/speak
+    Synthesizes given text into base64 encoded audio in Telugu or English.
+    """
+    try:
+        result = await synthesis_service.speak(
+            text=request.text,
+            language=request.language
+        )
+        return result
+    except VoiceServiceException as ve:
+        return error_response(
+            code=ve.code,
+            message=ve.message,
+            status_code=ve.status_code,
+            details=ve.details
+        )
+    except Exception:
+        logger.exception("Unexpected server error in speak_voice")
+        return error_response(
+            code="INTERNAL_SERVER_ERROR",
+            message="An internal server error occurred while synthesizing speech audio.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+========== TRANSCRIPTION SERVICE ==========
+"""
+Voice Transcription Service for AI Grama Sahayak
+Author: Member 3
+Contract: POST /api/voice/transcribe (multipart/form-data: file, language)
+Returns: { "transcribed_text": str, "language": str, "confidence": float }
+"""
+
+import os
+import io
+import logging
+from typing import Dict, Any, Optional
+
+logger = logging.getLogger("voice.transcription")
+
+SUPPORTED_LANGUAGES = {"en", "te"}
+MAX_AUDIO_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB
+ALLOWED_EXTENSIONS = {".wav", ".mp3", ".ogg", ".webm", ".m4a", ".flac", ".aac"}
+ALLOWED_MIME_TYPES = {
+    "audio/wav", "audio/x-wav", "audio/wave",
+    "audio/mpeg", "audio/mp3",
+    "audio/ogg", "application/ogg",
+    "audio/webm",
+    "audio/m4a", "audio/x-m4a", "audio/mp4",
+    "audio/flac", "audio/x-flac",
+    "audio/aac", "application/octet-stream"
+}
+
+
+class VoiceServiceException(Exception):
+    def __init__(self, code: str, message: str, status_code: int = 400, details: Optional[list] = None):
+        self.code = code
+        self.message = message
+        self.status_code = status_code
+        self.details = details or []
+        super().__init__(self.message)
+
+
+def is_valid_audio_magic(data: bytes, ext: str) -> bool:
+    """
+    Verifies actual binary magic bytes / header signatures for supported audio formats.
+    Strictly validates audio bytes: arbitrary non-audio bytes are rejected even with a valid extension.
+    """
+    if len(data) < 4:
+        return False
+
+    # WAV / RIFF: starts with 'RIFF', bytes 8..12 are 'WAVE' (or big-endian 'RIFX' ... 'WAVE')
+    if len(data) >= 12 and (data.startswith(b"RIFF") or data.startswith(b"RIFX")) and data[8:12] == b"WAVE":
+        return True
+
+    # OGG: 'OggS'
+    if data.startswith(b"OggS"):
+        return True
+
+    # MP3: ID3v2 tag ('ID3') or MPEG frame sync header (0xFF, high 3 bits of next byte set, layer != 0)
+    if data.startswith(b"ID3"):
+        return True
+    if len(data) >= 2 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0 and (data[1] & 0x06) != 0x00:
+        return True
+
+    # FLAC: 'fLaC'
+    if data.startswith(b"fLaC"):
+        return True
+
+    # MP4 / M4A: ISO base media file with 'ftyp' box at offset 4
+    if len(data) >= 8 and data[4:8] == b"ftyp":
+        return True
+
+    # WebM / Matroska EBML header: 0x1A 0x45 0xDF 0xA3
+    if data.startswith(b"\x1a\x45\xdf\xa3"):
+        return True
+
+    # AAC ADTS header: 0xFF followed by 0xF0..0xF1 (syncword 12 bits set)
+    if len(data) >= 2 and data[0] == 0xFF and (data[1] & 0xF6) == 0xF0:
+        return True
+
+    # Strict: do NOT fall back to checking file extension! Real audio headers are strictly required.
+    return False
+
+
+class VoiceTranscriptionService:
+    """Handles audio validation and real STT transcription for Telugu and English."""
+
+    def __init__(self):
+        self.sarvam_key = os.getenv("SARVAM_API_KEY")
+        self.openai_key = os.getenv("OPENAI_API_KEY")
+
+    def validate_input(self, filename: Optional[str], content_type: Optional[str], file_bytes: bytes, language: str) -> None:
+        # Validate language
+        if not language or language.lower().strip() not in SUPPORTED_LANGUAGES:
+            raise VoiceServiceException(
+                code="UNSUPPORTED_LANGUAGE",
+                message=f"Unsupported language code '{language}'. Supported languages are: 'te' (Telugu) and 'en' (English).",
+                status_code=422,
+                details=[{"field": "language", "issue": "Must be 'en' or 'te'"}]
+            )
+
+        # Validate file presence and non-empty
+        if not file_bytes or len(file_bytes) == 0:
+            raise VoiceServiceException(
+                code="EMPTY_AUDIO_FILE",
+                message="The uploaded audio file is empty. Please provide recorded audio.",
+                status_code=400,
+                details=[{"field": "file", "issue": "File size is 0 bytes"}]
+            )
+
+        # Enforce 15 MB limit
+        if len(file_bytes) > MAX_AUDIO_SIZE_BYTES:
+            raise VoiceServiceException(
+                code="PAYLOAD_TOO_LARGE",
+                message=f"Audio file size ({len(file_bytes)} bytes) exceeds the maximum allowed limit of {MAX_AUDIO_SIZE_BYTES // (1024 * 1024)} MB.",
+                status_code=413,
+                details=[{"field": "file", "issue": "Exceeds 15MB"}]
+            )
+
+        # Validate extension or MIME type
+        ext = os.path.splitext(filename or "")[1].lower()
+        content_type_clean = (content_type or "").split(";")[0].strip().lower()
+
+        is_valid_ext = ext in ALLOWED_EXTENSIONS
+        is_valid_mime = content_type_clean in ALLOWED_MIME_TYPES
+
+        if not is_valid_ext and not is_valid_mime:
+            raise VoiceServiceException(
+                code="INVALID_AUDIO_FORMAT",
+                message=f"Unsupported audio format '{ext or content_type_clean}'. Supported formats: wav, mp3, ogg, webm, m4a, flac.",
+                status_code=400,
+                details=[{"field": "file", "issue": f"Invalid format '{ext or content_type}'"}]
+            )
+
+        # Verify minimal audio length
+        if len(file_bytes) < 32:
+            raise VoiceServiceException(
+                code="CORRUPTED_AUDIO_FILE",
+                message="Audio file appears corrupted or too brief to contain valid speech data.",
+                status_code=400,
+                details=[{"field": "file", "issue": "Audio header too small"}]
+            )
+
+        # Check binary format header / magic
+        if not is_valid_audio_magic(file_bytes, ext):
+            raise VoiceServiceException(
+                code="INVALID_AUDIO_FORMAT",
+                message=f"File content does not match a valid audio format header for '{ext}'.",
+                status_code=400,
+                details=[{"field": "file", "issue": "Corrupt or invalid audio magic header"}]
+            )
+
+    async def transcribe(self, filename: Optional[str], content_type: Optional[str], file_bytes: bytes, language: str = "en") -> Dict[str, Any]:
+        """
+        Transcribes audio bytes to text in Telugu or English.
+        Requires configured real external STT provider (Sarvam AI or OpenAI).
+        Never fabricates user speech or confidence scores.
+        """
+        lang = language.lower().strip()
+        self.validate_input(filename, content_type, file_bytes, lang)
+
+        # 1. External Provider: Sarvam AI
+        if self.sarvam_key:
+            try:
+                import httpx
+                target_lang_code = "te-IN" if lang == "te" else "en-IN"
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    files = {"file": (filename or "audio.wav", file_bytes, content_type or "audio/wav")}
+                    data = {"model": "saarika:v1", "language_code": target_lang_code}
+                    headers = {"api-subscription-key": self.sarvam_key}
+                    response = await client.post("https://api.sarvam.ai/speech-to-text", files=files, data=data, headers=headers)
+                    if response.status_code == 200:
+                        res_json = response.json()
+                        transcript = res_json.get("transcript", "")
+                        if transcript:
+                            raw_conf = res_json.get("confidence")
+                            confidence = None
+                            if raw_conf is not None:
+                                try:
+                                    confidence = round(float(raw_conf), 2)
+                                except (ValueError, TypeError):
+                                    confidence = None
+                            elif "words" in res_json and isinstance(res_json["words"], list):
+                                word_confs = [w.get("confidence") for w in res_json["words"] if isinstance(w, dict) and w.get("confidence") is not None]
+                                if word_confs:
+                                    try:
+                                        confidence = round(float(sum(word_confs) / len(word_confs)), 2)
+                                    except (ValueError, TypeError, ZeroDivisionError):
+                                        confidence = None
+
+                            return {
+                                "transcribed_text": transcript,
+                                "language": lang,
+                                "confidence": confidence
+                            }
+                    logger.error("Sarvam STT returned status %d: %s", response.status_code, response.text[:200])
+            except Exception as e:
+                logger.error("Sarvam STT request failed: %s", type(e).__name__)
+
+        # 2. External Provider: OpenAI Whisper
+        if self.openai_key:
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    files = {"file": (filename or "audio.wav", file_bytes, content_type or "audio/wav")}
+                    data = {"model": "whisper-1", "language": lang}
+                    headers = {"Authorization": f"Bearer {self.openai_key}"}
+                    response = await client.post("https://api.openai.com/v1/audio/transcriptions", files=files, data=data, headers=headers)
+                    if response.status_code == 200:
+                        res_json = response.json()
+                        transcript = res_json.get("text", "")
+                        if transcript:
+                            raw_conf = res_json.get("confidence")
+                            confidence = None
+                            if raw_conf is not None:
+                                try:
+                                    confidence = round(float(raw_conf), 2)
+                                except (ValueError, TypeError):
+                                    confidence = None
+
+                            return {
+                                "transcribed_text": transcript,
+                                "language": lang,
+                                "confidence": confidence
+                            }
+                    logger.error("OpenAI Whisper STT returned status %d: %s", response.status_code, response.text[:200])
+            except Exception as e:
+                logger.error("OpenAI Whisper request failed: %s", type(e).__name__)
+
+        # 3. No real provider configured or all providers failed
+        # Explicitly return 503 Service Unavailable — NEVER invent user speech or fake confidence!
+        logger.warning("Voice transcription requested but no STT provider is available or reachable.")
+        raise VoiceServiceException(
+            code="VOICE_PROVIDER_UNAVAILABLE",
+            message="Speech transcription service is currently unavailable. No external STT provider is configured or reachable on the backend.",
+            status_code=503,
+            details=[{"issue": "Neither SARVAM_API_KEY nor OPENAI_API_KEY is configured or reachable on the server."}]
+        )
+
+========== SYNTHESIS SERVICE ==========
+"""
+Voice Synthesis Service for AI Grama Sahayak
+Author: Member 3
+Contract: POST /api/voice/speak (JSON: text, language)
+Returns: { "audio_base64": str, "mime_type": str, "language": str }
+"""
+
+import os
+import io
+import re
+import wave
+import base64
+import logging
+from typing import Dict, Any, List, Optional
+from .transcription import VoiceServiceException, SUPPORTED_LANGUAGES
+
+logger = logging.getLogger("voice.synthesis")
+
+MAX_TEXT_LENGTH = 4000
+
+
+def chunk_text(text: str, max_chars: int = 500) -> List[str]:
+    """
+    Safely splits text into chunks of at most max_chars without dropping any words or characters.
+    Splits on sentence boundaries (. ? ! । \n) or whitespace.
+    Guarantees 100% of the input text is preserved without silent omission.
+    """
+    text = text.strip()
+    if not text:
+        return []
+    if len(text) <= max_chars:
+        return [text]
+
+    chunks: List[str] = []
+    # Split on sentence boundaries while keeping the terminator
+    sentences = re.split(r'(?<=[.?!।\n])\s+', text)
+    current_chunk = ""
+
+    for s in sentences:
+        s = s.strip()
+        if not s:
+            continue
+        if len(s) > max_chars:
+            # Long sentence: split on words
+            words = s.split()
+            for w in words:
+                if len(w) > max_chars:
+                    # Long unbroken token: slice without losing any characters
+                    if current_chunk:
+                        chunks.append(current_chunk)
+                        current_chunk = ""
+                    for i in range(0, len(w), max_chars):
+                        sub = w[i:i + max_chars]
+                        if len(sub) == max_chars:
+                            chunks.append(sub)
+                        else:
+                            current_chunk = sub
+                elif not current_chunk:
+                    current_chunk = w
+                elif len(current_chunk) + len(w) + 1 <= max_chars:
+                    current_chunk += " " + w
+                else:
+                    chunks.append(current_chunk)
+                    current_chunk = w
+        else:
+            if not current_chunk:
+                current_chunk = s
+            elif len(current_chunk) + len(s) + 1 <= max_chars:
+                current_chunk += " " + s
+            else:
+                chunks.append(current_chunk)
+                current_chunk = s
+
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
+
+
+def combine_wav_base64_chunks(b64_chunks: List[str]) -> str:
+    """
+    Combines multiple base64-encoded WAV audio buffers into a single valid WAV base64 string.
+    """
+    if not b64_chunks:
+        return ""
+    if len(b64_chunks) == 1:
+        return b64_chunks[0]
+
+    pcm_data = bytearray()
+    params = None
+    for b64 in b64_chunks:
+        try:
+            raw = base64.b64decode(b64)
+            if len(raw) < 44:
+                continue
+            with wave.open(io.BytesIO(raw), "rb") as wf:
+                if params is None:
+                    params = wf.getparams()
+                pcm_data.extend(wf.readframes(wf.getnframes()))
+        except Exception:
+            try:
+                raw = base64.b64decode(b64)
+                if len(raw) > 44:
+                    pcm_data.extend(raw[44:])
+            except Exception:
+                pass
+
+    if not pcm_data:
+        return b64_chunks[0]
+
+    out_buf = io.BytesIO()
+    with wave.open(out_buf, "wb") as out_wf:
+        if params:
+            out_wf.setparams(params)
+        else:
+            out_wf.setnchannels(1)
+            out_wf.setsampwidth(2)
+            out_wf.setframerate(8000)
+        out_wf.writeframes(bytes(pcm_data))
+
+    return base64.b64encode(out_buf.getvalue()).decode("utf-8")
+
+
+class VoiceSynthesisService:
+    """Handles text validation and real TTS speech synthesis for Telugu and English."""
+
+    def __init__(self):
+        self.sarvam_key = os.getenv("SARVAM_API_KEY")
+        self.openai_key = os.getenv("OPENAI_API_KEY")
+
+    def validate_input(self, text: str, language: str) -> None:
+        if not language or language.lower().strip() not in SUPPORTED_LANGUAGES:
+            raise VoiceServiceException(
+                code="UNSUPPORTED_LANGUAGE",
+                message=f"Unsupported language code '{language}'. Supported languages are: 'te' (Telugu) and 'en' (English).",
+                status_code=422,
+                details=[{"field": "language", "issue": "Must be 'en' or 'te'"}]
+            )
+
+        if not text or not text.strip():
+            raise VoiceServiceException(
+                code="EMPTY_TEXT",
+                message="Text to synthesize cannot be empty. Please provide text for speech generation.",
+                status_code=400,
+                details=[{"field": "text", "issue": "Text must not be empty or whitespace"}]
+            )
+
+        if len(text) > MAX_TEXT_LENGTH:
+            raise VoiceServiceException(
+                code="TEXT_TOO_LONG",
+                message=f"Text length ({len(text)} characters) exceeds maximum limit of {MAX_TEXT_LENGTH} characters.",
+                status_code=400,
+                details=[{"field": "text", "issue": f"Exceeds {MAX_TEXT_LENGTH} characters"}]
+            )
+
+    async def speak(self, text: str, language: str = "en") -> Dict[str, Any]:
+        """
+        Synthesizes text to speech in Telugu or English.
+        Requires configured real external TTS provider (Sarvam AI Bulbul or OpenAI TTS).
+        Never returns fake audio chimes or synthetic filler as spoken output.
+        Never silently truncates or omits text.
+        """
+        lang = language.lower().strip()
+        self.validate_input(text, lang)
+
+        # 1. External Provider: Sarvam AI (Native support for Telugu & Indian English)
+        if self.sarvam_key:
+            try:
+                import httpx
+                target_lang_code = "te-IN" if lang == "te" else "en-IN"
+                chunks = chunk_text(text, max_chars=500)
+                if not chunks:
+                    chunks = [text]
+
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    payload = {
+                        "inputs": chunks,
+                        "target_language_code": target_lang_code,
+                        "speaker": "meera",
+                        "pitch": 0,
+                        "pace": 1.0,
+                        "speech_sample_rate": 8000,
+                        "enable_preprocessing": True,
+                        "model": "bulbul:v1"
+                    }
+                    headers = {
+                        "api-subscription-key": self.sarvam_key,
+                        "Content-Type": "application/json"
+                    }
+                    response = await client.post("https://api.sarvam.ai/text-to-speech", json=payload, headers=headers)
+                    if response.status_code == 200:
+                        res_json = response.json()
+                        audios = res_json.get("audios", [])
+                        if audios and len(audios) > 0:
+                            combined_audio = combine_wav_base64_chunks(audios)
+                            return {
+                                "audio_base64": combined_audio,
+                                "mime_type": "audio/wav",
+                                "language": lang
+                            }
+                    logger.error("Sarvam TTS returned status %d: %s", response.status_code, response.text[:200])
+            except Exception as e:
+                logger.error("Sarvam TTS request failed: %s", type(e).__name__)
+
+        # 2. External Provider: OpenAI TTS
+        if self.openai_key:
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=45.0) as client:
+                    payload = {
+                        "model": "tts-1",
+                        "input": text,
+                        "voice": "nova"
+                    }
+                    headers = {
+                        "Authorization": f"Bearer {self.openai_key}",
+                        "Content-Type": "application/json"
+                    }
+                    response = await client.post("https://api.openai.com/v1/audio/speech", json=payload, headers=headers)
+                    if response.status_code == 200:
+                        audio_b64 = base64.b64encode(response.content).decode("utf-8")
+                        return {
+                            "audio_base64": audio_b64,
+                            "mime_type": "audio/mpeg",
+                            "language": lang
+                        }
+                    logger.error("OpenAI TTS returned status %d: %s", response.status_code, response.text[:200])
+            except Exception as e:
+                logger.error("OpenAI TTS request failed: %s", type(e).__name__)
+
+        # 3. No real provider configured or all providers failed
+        # Explicitly return 503 Service Unavailable — NEVER return chimes or fake audio!
+        logger.warning("Voice synthesis requested but no TTS provider is available or reachable.")
+        raise VoiceServiceException(
+            code="VOICE_PROVIDER_UNAVAILABLE",
+            message="Text-to-speech service is currently unavailable. No external TTS provider is configured or reachable on the backend.",
+            status_code=503,
+            details=[{"issue": "Neither SARVAM_API_KEY nor OPENAI_API_KEY is configured or reachable on the server."}]
+        )
+
+========== FRONTEND API CLIENT ==========
+/**
+ * AI Grama Sahayak API Client
+ * Author: Member 3
+ * Adheres strictly to docs/api_contracts.md
+ */
+
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8000";
+
+export interface Source {
+  title: string;
+  url: string;
+  publisher: string;
+  verified_at: string;
+}
+
+export interface ChatRequest {
+  message: string;
+  assistant: "agriculture" | "healthcare" | "education" | "schemes";
+  language: "en" | "te";
+  state?: string;
+  district?: string | null;
+  conversation_id?: string | null;
+}
+
+export interface ChatResponse {
+  conversation_id: string;
+  answer: string;
+  assistant: string;
+  language: string;
+  sources: Source[];
+  needs_follow_up: boolean;
+  follow_up_questions: string[];
+  safety_notice: string | null;
+}
+
+export interface VoiceTranscribeResponse {
+  transcribed_text: string;
+  language: string;
+  confidence: number;
+}
+
+export interface VoiceSpeakResponse {
+  audio_base64: string;
+  mime_type: string;
+  language: string;
+}
+
+export interface DocumentAnalysisResponse {
+  document_type: string;
+  extracted_fields: Record<string, string | number | null>;
+  checklist_status: string;
+  missing_fields: string[];
+  warnings: string[];
+}
+
+export interface GovernmentService {
+  name: string;
+  service_type: string;
+  address: string;
+  phone: string | null;
+  distance_km: number | null;
+  source_url: string | null;
+}
+
+export interface NearbyServicesResponse {
+  services: GovernmentService[];
+}
+
+export interface GrievanceDraftRequest {
+  category: string;
+  description: string;
+  district: string;
+  mandal: string;
+  language: "en" | "te";
+}
+
+export interface GrievanceOfficialLink {
+  title?: string;
+  url: string;
+}
+
+export interface GrievanceDraftResponse {
+  subject: string;
+  complaint_body: string;
+  recommended_next_steps: string[];
+  official_links: (string | GrievanceOfficialLink)[];
+}
+
+export interface ApiError {
+  code: string;
+  message: string;
+  details?: unknown[];
+}
+
+export class ApiException extends Error {
+  code: string;
+  status: number;
+  details?: unknown[];
+
+  constructor(message: string, code: string = "API_ERROR", status: number = 500, details?: unknown[]) {
+    super(message);
+    this.name = "ApiException";
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let errorCode = "HTTP_ERROR";
+    let errorMessage = `Server returned error status ${res.status} (${res.statusText})`;
+    let details: unknown[] | undefined;
+
+    try {
+      const errorJson = await res.json();
+      if (errorJson?.error) {
+        errorCode = errorJson.error.code || errorCode;
+        errorMessage = errorJson.error.message || errorMessage;
+        details = errorJson.error.details;
+      }
+    } catch {
+      // response body was not valid JSON
+    }
+
+    throw new ApiException(errorMessage, errorCode, res.status, details);
+  }
+
+  return (await res.json()) as T;
+}
+
+/**
+ * Send chat message to backend (Member 1)
+ */
+export async function sendChatMessage(
+  payload: ChatRequest,
+  signal?: AbortSignal
+): Promise<ChatResponse> {
+  const url = `${API_BASE_URL}/api/chat`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  return handleResponse<ChatResponse>(res);
+}
+
+/**
+ * Transcribe recorded audio (Member 3)
+ */
+export async function transcribeAudio(
+  audioBlob: Blob,
+  language: "en" | "te" = "en",
+  signal?: AbortSignal
+): Promise<VoiceTranscribeResponse> {
+  const url = `${API_BASE_URL}/api/voice/transcribe`;
+  const formData = new FormData();
+  formData.append("file", audioBlob, "recording.wav");
+  formData.append("language", language);
+
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+    signal,
+  });
+
+  return handleResponse<VoiceTranscribeResponse>(res);
+}
+
+/**
+ * Synthesize text into speech (Member 3)
+ */
+export async function synthesizeSpeech(
+  text: string,
+  language: "en" | "te" = "en",
+  signal?: AbortSignal
+): Promise<VoiceSpeakResponse> {
+  const url = `${API_BASE_URL}/api/voice/speak`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ text, language }),
+    signal,
+  });
+
+  return handleResponse<VoiceSpeakResponse>(res);
+}
+
+/**
+ * Upload and analyze citizen document (Member 4)
+ */
+export async function analyzeDocument(
+  file: File,
+  documentType?: string,
+  signal?: AbortSignal
+): Promise<DocumentAnalysisResponse> {
+  const url = `${API_BASE_URL}/api/documents/analyze`;
+  const formData = new FormData();
+  formData.append("file", file);
+  if (documentType) {
+    formData.append("document_type", documentType);
+  }
+
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+    signal,
+  });
+
+  return handleResponse<DocumentAnalysisResponse>(res);
+}
+
+/**
+ * Fetch nearby government services (Member 4)
+ */
+export async function getNearbyServices(
+  params: {
+    service_type?: string;
+    district?: string;
+    latitude?: number;
+    longitude?: number;
+  },
+  signal?: AbortSignal
+): Promise<NearbyServicesResponse> {
+  const query = new URLSearchParams();
+  if (params.service_type) query.append("service_type", params.service_type);
+  if (params.district) query.append("district", params.district);
+  if (params.latitude !== undefined && params.longitude !== undefined) {
+    query.append("latitude", params.latitude.toString());
+    query.append("longitude", params.longitude.toString());
+  }
+
+  const url = `${API_BASE_URL}/api/services/nearby?${query.toString()}`;
+  const res = await fetch(url, {
+    method: "GET",
+    signal,
+  });
+
+  return handleResponse<NearbyServicesResponse>(res);
+}
+
+/**
+ * Draft a citizen grievance (Member 4)
+ */
+export async function draftGrievance(
+  payload: GrievanceDraftRequest,
+  signal?: AbortSignal
+): Promise<GrievanceDraftResponse> {
+  const url = `${API_BASE_URL}/api/grievances/draft`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  return handleResponse<GrievanceDraftResponse>(res);
+}
+
+========== FRONTEND MAIN PAGE ==========
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import {
+  sendChatMessage,
+  Source,
+  ApiException,
+} from "../services/api";
+import DocumentAnalysis from "../components/DocumentAnalysis";
+import NearbyServices from "../components/NearbyServices";
+import GrievanceDrafting from "../components/GrievanceDrafting";
+import AudioSpeakButton from "../components/AudioSpeakButton";
+
+type SpeechRecognitionAlternativeLike = {
+  transcript: string;
+};
+
+type SpeechRecognitionResultLike = {
+  0: SpeechRecognitionAlternativeLike;
+};
+
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<SpeechRecognitionResultLike>;
+};
+
+type SpeechRecognitionErrorLike = {
+  error: string;
+};
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+type WindowWithSpeechRecognition = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
+
+type ChatMessage = {
+  id: number;
+  sender: "user" | "assistant";
+  text: string;
+  sources?: Source[];
+  safetyNotice?: string | null;
+  followUps?: string[];
+  isError?: boolean;
+};
+
+const categories = [
+  {
+    title: "Agriculture",
+    assistantId: "agriculture" as const,
+    description: "Farming, crops, pests & weather guidance",
+    icon: "🌾",
+    color: "agriculture",
+  },
+  {
+    title: "Healthcare",
+    assistantId: "healthcare" as const,
+    description: "Health information & healthcare guidance",
+    icon: "🩺",
+    color: "healthcare",
+  },
+  {
+    title: "Education",
+    assistantId: "education" as const,
+    description: "Scholarships, learning & educational support",
+    icon: "📚",
+    color: "education",
+  },
+  {
+    title: "Government Schemes",
+    assistantId: "schemes" as const,
+    description: "Benefits, eligibility & application guidance",
+    icon: "🏛️",
+    color: "schemes",
+  },
+];
+
+type ActiveTab = "chat" | "documents" | "services" | "grievances";
+
+export default function Home() {
+  const [activeTab, setActiveTab] = useState<ActiveTab>("chat");
+  const [language, setLanguage] = useState("Telugu");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [question, setQuestion] = useState("");
+  const [voiceMessage, setVoiceMessage] = useState("");
+  const [isListening, setIsListening] = useState(false);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isThinking, setIsThinking] = useState(false);
+  const [backendNotice, setBackendNotice] = useState<string | null>(null);
+
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const lastFailedMessageRef = useRef<string | null>(null);
+  const messageIdCounterRef = useRef(1);
+
+  // Automatically scroll to the latest chat content
+  useEffect(() => {
+    if (activeTab === "chat") {
+      chatEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  }, [messages, isThinking, activeTab]);
+
+  // Clean up any in-flight requests when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  /**
+   * Browser Speech Recognition (Web Speech API).
+   * Note: Browser SpeechRecognition may use browser/vendor network services
+   * (e.g. Google speech servers in Chrome) and is not guaranteed to operate offline.
+   */
+  const startVoiceInput = () => {
+    const browserWindow = window as WindowWithSpeechRecognition;
+
+    const SpeechRecognitionAPI =
+      browserWindow.SpeechRecognition ||
+      browserWindow.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
+      setVoiceMessage(
+        "Speech recognition is not supported in this browser. Please try Google Chrome."
+      );
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognitionAPI();
+
+    recognition.lang = language === "Telugu" ? "te-IN" : "en-IN";
+
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setVoiceMessage("Listening... Speak your question now 🎤");
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+
+      setQuestion(transcript);
+      setVoiceMessage("Your speech was converted to text successfully! ✓");
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+
+      if (event.error === "not-allowed") {
+        setVoiceMessage(
+          "Microphone permission denied. Please allow microphone access in your browser."
+        );
+      } else if (event.error === "no-speech") {
+        setVoiceMessage(
+          "No speech detected. Please tap the microphone and try again."
+        );
+      } else if (event.error === "network") {
+        setVoiceMessage(
+          "Network error occurred during speech recognition. Please try again."
+        );
+      } else {
+        setVoiceMessage(
+          "Something went wrong with voice recognition. Please try again."
+        );
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    try {
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      setVoiceMessage("Unable to start microphone. Please try again.");
+    }
+  };
+
+  // Map category title to backend assistant identifier
+  const getAssistantId = (): "agriculture" | "healthcare" | "education" | "schemes" => {
+    const match = categories.find((c) => c.title === selectedCategory);
+    return match ? match.assistantId : "schemes";
+  };
+
+  // Map language to backend contract code ('te' or 'en')
+  const getLanguageCode = (): "te" | "en" => {
+    return language === "Telugu" ? "te" : "en";
+  };
+
+  const handleSendMessage = async (textToSend?: string) => {
+    const rawQuestion = textToSend || question;
+    const trimmedQuestion = rawQuestion.trim();
+
+    if (!trimmedQuestion || isThinking) return;
+
+    // Abort previous in-flight request if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const userMessage: ChatMessage = {
+      id: messageIdCounterRef.current++,
+      sender: "user",
+      text: trimmedQuestion,
+    };
+
+    setMessages((previousMessages) => [
+      ...previousMessages,
+      userMessage,
+    ]);
+
+    setQuestion("");
+    setVoiceMessage("");
+    setIsThinking(true);
+    setBackendNotice(null);
+    lastFailedMessageRef.current = null;
+
+    try {
+      const response = await sendChatMessage(
+        {
+          message: trimmedQuestion,
+          assistant: getAssistantId(),
+          language: getLanguageCode(),
+          state: "Andhra Pradesh",
+          conversation_id: conversationIdRef.current,
+        },
+        controller.signal
+      );
+
+      // Verify request wasn't cancelled by New Chat
+      if (controller.signal.aborted) return;
+
+      // Update multi-turn conversation ID
+      if (response.conversation_id) {
+        conversationIdRef.current = response.conversation_id;
+      }
+
+      const assistantMessage: ChatMessage = {
+        id: messageIdCounterRef.current++,
+        sender: "assistant",
+        text: response.answer,
+        sources: response.sources || [],
+        safetyNotice: response.safety_notice || null,
+        followUps: response.follow_up_questions || [],
+      };
+
+      setMessages((previousMessages) => [
+        ...previousMessages,
+        assistantMessage,
+      ]);
+    } catch (err: unknown) {
+      if (controller.signal.aborted) {
+        // Request was intentionally cancelled (e.g., New Chat)
+        return;
+      }
+
+      lastFailedMessageRef.current = trimmedQuestion;
+
+      let errorNotice = "";
+      if (err instanceof ApiException) {
+        errorNotice = `API Error [${err.code}]: ${err.message}`;
+      } else {
+        errorNotice =
+          language === "Telugu"
+            ? "బ్యాకెండ్ చాట్ సర్వరు అందుబాటులో లేదు (/api/chat). (Member 1 చాట్ ఆర్కెస్ట్రేషన్ అభివృద్ధి చేస్తున్నారు)."
+            : "Backend chat service is unreachable at /api/chat. (Member 1 develops this endpoint).";
+      }
+
+      setBackendNotice(errorNotice);
+
+      // Honest service-unavailable message — no fake answers or fabricated advice!
+      const unavailableMessage: ChatMessage = {
+        id: messageIdCounterRef.current++,
+        sender: "assistant",
+        text:
+          language === "Telugu"
+            ? "క్షమించండి, గ్రామ సహాయక్ చాట్ సర్వీస్ ప్రస్తుతం అందుబాటులో లేదు (/api/chat). దయచేసి కాసేపటి తర్వాత 'మళ్లీ ప్రయత్నించండి' బటన్ నొక్కండి."
+            : "The Grama Sahayak chat service is currently unavailable (/api/chat). Please try again in a few moments using the Retry button.",
+        isError: true,
+      };
+
+      setMessages((previousMessages) => [
+        ...previousMessages,
+        unavailableMessage,
+      ]);
+    } finally {
+      setIsThinking(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  // Start a fresh conversation and cancel any pending response
+  const handleNewChat = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    conversationIdRef.current = null;
+    lastFailedMessageRef.current = null;
+    setMessages([]);
+    setIsThinking(false);
+    setQuestion("");
+    setVoiceMessage("");
+    setBackendNotice(null);
+  };
+
+  const handleRetry = () => {
+    if (lastFailedMessageRef.current) {
+      const retryText = lastFailedMessageRef.current;
+      handleSendMessage(retryText);
+    }
+  };
+
+  return (
+    <main className="home-container">
+      {/* Header */}
+      <header className="site-header">
+        <div className="brand">
+          <div className="brand-icon">🌿</div>
+          <div>
+            <h1>AI Grama Sahayak</h1>
+            <p>Your trusted digital assistant</p>
+          </div>
+        </div>
+
+        <select
+          className="language-select"
+          value={language}
+          onChange={(e) => {
+            setLanguage(e.target.value);
+            setVoiceMessage("");
+          }}
+          aria-label="Select language"
+        >
+          <option value="Telugu">తెలుగు (Telugu)</option>
+          <option value="English">English</option>
+        </select>
+      </header>
+
+      {/* Navigation Tabs for Services */}
+      <nav className="portal-nav" aria-label="Portal Services">
+        <button
+          className={`nav-tab ${activeTab === "chat" ? "active" : ""}`}
+          onClick={() => setActiveTab("chat")}
+        >
+          <span className="nav-tab-icon">💬</span>
+          <span>{language === "Telugu" ? "సహాయక్ చాట్" : "Sahayak Chat"}</span>
+        </button>
+
+        <button
+          className={`nav-tab ${activeTab === "documents" ? "active" : ""}`}
+          onClick={() => setActiveTab("documents")}
+        >
+          <span className="nav-tab-icon">📄</span>
+          <span>{language === "Telugu" ? "పత్రాల విశ్లేషణ" : "Document Analysis"}</span>
+        </button>
+
+        <button
+          className={`nav-tab ${activeTab === "services" ? "active" : ""}`}
+          onClick={() => setActiveTab("services")}
+        >
+          <span className="nav-tab-icon">📍</span>
+          <span>{language === "Telugu" ? "సమీప ప్రభుత్వ సేవలు" : "Nearby Services"}</span>
+        </button>
+
+        <button
+          className={`nav-tab ${activeTab === "grievances" ? "active" : ""}`}
+          onClick={() => setActiveTab("grievances")}
+        >
+          <span className="nav-tab-icon">📝</span>
+          <span>{language === "Telugu" ? "ఫిర్యాదు ముసాయిదా" : "Draft Grievance"}</span>
+        </button>
+      </nav>
+
+      {/* View: Document Analysis */}
+      {activeTab === "documents" && <DocumentAnalysis language={language} />}
+
+      {/* View: Nearby Services */}
+      {activeTab === "services" && <NearbyServices language={language} />}
+
+      {/* View: Grievances */}
+      {activeTab === "grievances" && <GrievanceDrafting language={language} />}
+
+      {/* View: Chat (Default Homepage Experience) */}
+      {activeTab === "chat" && (
+        <>
+          {/* Hero */}
+          <section className="hero">
+            <div className="hero-content">
+              <span className="welcome-tag">YOUR DIGITAL VILLAGE ASSISTANT</span>
+
+              <h2>
+                How can we help
+                <br />
+                <span>you today?</span>
+              </h2>
+
+              <p>
+                Ask anything. Get trusted guidance in your own language.
+                Simple, accessible help for everyone.
+              </p>
+
+              <button
+                className="voice-button"
+                onClick={startVoiceInput}
+                aria-label={isListening ? "Stop listening" : "Speak your question"}
+              >
+                <span className="mic-icon">
+                  {isListening ? "🔴" : "🎙️"}
+                </span>
+                <span>
+                  <strong>
+                    {isListening ? "Listening..." : "Speak your question"}
+                  </strong>
+                  <small>
+                    {isListening
+                      ? "Tap to stop recording"
+                      : "Tap to ask using your voice"}
+                  </small>
+                </span>
+              </button>
+
+              {voiceMessage && (
+                <p className="voice-notice" role="status">
+                  {voiceMessage}
+                </p>
+              )}
+            </div>
+
+            <div className="hero-decoration" aria-hidden="true">
+              <span>🌱</span>
+              <span>🌾</span>
+              <span>🍃</span>
+            </div>
+          </section>
+
+          {/* Categories */}
+          <section className="assistance-section">
+            <div className="section-heading">
+              <div>
+                <span className="section-label">HERE TO HELP</span>
+                <h2>What do you need help with?</h2>
+              </div>
+              <p>Choose a category to get started</p>
+            </div>
+
+            <div className="category-grid">
+              {categories.map((category) => (
+                <button
+                  key={category.title}
+                  className={`category-card ${category.color} ${
+                    selectedCategory === category.title ? "selected" : ""
+                  }`}
+                  onClick={() => setSelectedCategory(category.title)}
+                >
+                  <div className="category-icon">{category.icon}</div>
+
+                  <div className="category-text">
+                    <h3>{category.title}</h3>
+                    <p>{category.description}</p>
+                  </div>
+
+                  <span className="card-arrow">→</span>
+                </button>
+              ))}
+            </div>
+
+            {selectedCategory && (
+              <div className="selected-category-message">
+                <span>✓</span>
+                <p>
+                  <strong>{selectedCategory}</strong> selected. You can now ask your
+                  question below.
+                </p>
+                <button onClick={() => setSelectedCategory("")}>Change</button>
+              </div>
+            )}
+          </section>
+
+          {/* Chat conversation */}
+          {messages.length > 0 && (
+            <section className="chat-section">
+              <div className="chat-heading">
+                <div>
+                  <span className="section-label">YOUR CONVERSATION</span>
+                  <h2>Chat with Grama Sahayak</h2>
+                </div>
+
+                <button
+                  className="new-chat-button"
+                  onClick={handleNewChat}
+                >
+                  + New Chat
+                </button>
+              </div>
+
+              <div className="chat-messages">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`chat-message ${
+                      message.sender === "user"
+                        ? "user-message"
+                        : "assistant-message"
+                    }`}
+                  >
+                    <div className="message-avatar">
+                      {message.sender === "user" ? "👤" : "🌿"}
+                    </div>
+
+                    <div className="message-content">
+                      <span className="message-sender">
+                        {message.sender === "user"
+                          ? "You"
+                          : "Grama Sahayak"}
+                      </span>
+
+                      <p>{message.text}</p>
+
+                      {/* Safety Notice */}
+                      {message.safetyNotice && (
+                        <div className="safety-notice-box" role="alert">
+                          <span>⚠️</span>
+                          <div>
+                            <strong>Advisory: </strong>
+                            <span>{message.safetyNotice}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sources */}
+                      {message.sources && message.sources.length > 0 && (
+                        <div className="sources-container">
+                          <span className="sources-title">
+                            {language === "Telugu" ? "అధికారిక ఆధారాలు:" : "Official Sources:"}
+                          </span>
+                          <div className="sources-list">
+                            {message.sources.map((src, sIdx) => (
+                              <div key={sIdx} className="source-item">
+                                <span>🏛️</span>
+                                <a
+                                  href={src.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="source-link"
+                                >
+                                  {src.title}
+                                </a>
+                                {src.publisher && (
+                                  <span className="source-meta">({src.publisher})</span>
+                                )}
+                                {src.verified_at && (
+                                  <span className="source-meta">
+                                    {" "}• {language === "Telugu" ? `ధృవీకరించబడింది: ${src.verified_at}` : `Verified: ${src.verified_at}`}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Follow-up Questions */}
+                      {message.followUps && message.followUps.length > 0 && (
+                        <div className="follow-up-container">
+                          <span className="follow-up-title">
+                            {language === "Telugu" ? "సూచించిన ప్రశ్నలు:" : "Suggested Questions:"}
+                          </span>
+                          <div className="follow-up-chips">
+                            {message.followUps.map((fq, fIdx) => (
+                              <button
+                                key={fIdx}
+                                className="follow-up-chip"
+                                onClick={() => handleSendMessage(fq)}
+                              >
+                                {fq} →
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Voice Audio Listen Button (Member 3) */}
+                      {message.sender === "assistant" && !message.isError && (
+                        <AudioSpeakButton text={message.text} language={language} />
+                      )}
+
+                      {/* Retry Button on Error */}
+                      {message.isError && (
+                        <button className="retry-button" onClick={handleRetry}>
+                          ↻ {language === "Telugu" ? "మళ్లీ ప్రయత్నించండి" : "Retry"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {isThinking && (
+                  <div className="chat-message assistant-message thinking-message">
+                    <div className="message-avatar">🌿</div>
+
+                    <div className="message-content">
+                      <span className="message-sender">Grama Sahayak</span>
+                      <p className="thinking-text">
+                        Thinking<span className="thinking-dots">...</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Automatic scroll target */}
+                <div ref={chatEndRef} />
+              </div>
+
+              {backendNotice ? (
+                <p className="demo-notice" style={{ color: "#b94a48" }}>
+                  ℹ️ {backendNotice}
+                </p>
+              ) : (
+                <p className="demo-notice">
+                  AI Grama Sahayak • Integrated with verified public information and government schemes.
+                </p>
+              )}
+            </section>
+          )}
+
+          {/* Question input */}
+          <section className="question-section">
+            <div className="question-box">
+              <div className="question-icon">💬</div>
+
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={
+                  language === "Telugu"
+                    ? "మీ ప్రశ్నను ఇక్కడ నమోదు చేయండి..."
+                    : "Type your question here..."
+                }
+                aria-label="Type your question"
+              />
+
+              <button
+                className="send-button"
+                disabled={!question.trim() || isThinking}
+                onClick={() => handleSendMessage()}
+              >
+                {isThinking ? "..." : "Send"} <span>➤</span>
+              </button>
+            </div>
+
+            <p className="question-hint">
+              {language === "Telugu"
+                ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు"
+                : "You can type in Telugu or English"}
+            </p>
+          </section>
+        </>
+      )}
+
+      {/* Footer */}
+      <footer className="site-footer">
+        <span>🌿 AI Grama Sahayak</span>
+        <span>Simple • Trusted • Accessible</span>
+      </footer>
+    </main>
+  );
+}
+
+========== AUDIO SPEAK BUTTON ==========
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { synthesizeSpeech } from "../services/api";
+
+interface AudioSpeakButtonProps {
+  text: string;
+  language: string; // "Telugu" | "English"
+}
+
+export default function AudioSpeakButton({ text, language }: AudioSpeakButtonProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const isTe = language === "Telugu";
+  const langCode: "te" | "en" = isTe ? "te" : "en";
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, []);
+
+  const handleToggleSpeak = async () => {
+    if (isPlaying || isLoading) {
+      stopAudio();
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMessage(null);
+
+    try {
+      // 1. Try backend voice synthesis endpoint
+      const res = await synthesizeSpeech(text, langCode);
+      if (res?.audio_base64) {
+        const audioSrc = `data:${res.mime_type || "audio/wav"};base64,${res.audio_base64}`;
+        const audio = new Audio(audioSrc);
+        audioRef.current = audio;
+
+        audio.onplay = () => {
+          setIsLoading(false);
+          setIsPlaying(true);
+        };
+
+        audio.onended = () => {
+          setIsPlaying(false);
+          audioRef.current = null;
+        };
+
+        audio.onerror = () => {
+          fallbackBrowserSpeech();
+        };
+
+        await audio.play();
+        return;
+      } else {
+        fallbackBrowserSpeech();
+      }
+    } catch {
+      // Backend TTS unavailable (e.g. 503 or offline) — fallback to browser speech synthesis
+      fallbackBrowserSpeech();
+    }
+  };
+
+  const fallbackBrowserSpeech = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setIsLoading(false);
+      setIsPlaying(false);
+      setStatusMessage(
+        isTe
+          ? "ఈ బ్రౌజర్‌లో వాయిస్ ప్లేబ్యాక్ అందుబాటులో లేదు."
+          : "Voice synthesis is not supported in this browser."
+      );
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    // Check available voices
+    const voices = window.speechSynthesis.getVoices();
+    const targetLang = isTe ? "te-IN" : "en-IN";
+    const voice = voices.find((v) => v.lang.startsWith(isTe ? "te" : "en"));
+
+    if (isTe && voices.length > 0 && !voice) {
+      // Browser has voices but no Telugu voice pack installed
+      setIsLoading(false);
+      setIsPlaying(false);
+      setStatusMessage(
+        "ఈ బ్రౌజర్ లేదా పరికరంలో తెలుగు వాయిస్ ప్యాక్ అందుబాటులో లేదు."
+      );
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = targetLang;
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.95;
+
+    utterance.onstart = () => {
+      setIsLoading(false);
+      setIsPlaying(true);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+    };
+
+    utterance.onerror = () => {
+      setIsLoading(false);
+      setIsPlaying(false);
+      setStatusMessage(
+        isTe
+          ? "ఆడియో ప్లేబ్యాక్ విఫలమైంది."
+          : "Audio playback encountered an error."
+      );
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  return (
+    <div className="audio-speak-container">
+      <button
+        className={`audio-speak-btn ${isPlaying ? "playing" : ""}`}
+        onClick={handleToggleSpeak}
+        disabled={isLoading}
+        aria-label={isPlaying ? "Stop speech" : "Listen to response"}
+        title={isPlaying ? "Stop audio" : "Listen to audio response"}
+      >
+        {isLoading ? (
+          <span>⏳ {isTe ? "సిద్ధమవుతోంది..." : "Loading..."}</span>
+        ) : isPlaying ? (
+          <span>⏹️ {isTe ? "ఆపండి" : "Stop"}</span>
+        ) : (
+          <span>🔊 {isTe ? "వినండి" : "Listen"}</span>
+        )}
+      </button>
+      {statusMessage && (
+        <span className="audio-status-msg" role="status">
+          {statusMessage}
+        </span>
+      )}
+    </div>
+  );
+}
+
+========== GRIEVANCE COMPONENT ==========
+"use client";
+
+import { useState } from "react";
+import { draftGrievance, GrievanceDraftResponse, ApiException } from "../services/api";
+
+interface GrievanceDraftingProps {
+  language: string;
+}
+
+const GRIEVANCE_CATEGORIES = [
+  { id: "water_supply", labelEn: "Drinking Water Supply", labelTe: "తాగునీటి సరఫరా సమస్య" },
+  { id: "electricity", labelEn: "Electricity & Power Outage", labelTe: "విద్యుత్ సరఫరా & స్తంభాల సమస్య" },
+  { id: "roads", labelEn: "Roads & Street Infrastructure", labelTe: "రహదారులు & వీధి లైట్ల మరమ్మత్తు" },
+  { id: "ration", labelEn: "Ration & PDS Distribution", labelTe: "రేషన్ & పౌరసరఫరాల సమస్య" },
+  { id: "drainage", labelEn: "Sanitation & Drainage Cleaning", labelTe: "పారిశుధ్యం & డ్రైనేజీ సమస్య" },
+  { id: "welfare", labelEn: "Welfare Scheme Delay / Issue", labelTe: "సంక్షేమ పథకం మంజూరులో ఆలస్యం" },
+  { id: "other", labelEn: "Other Citizen Grievance", labelTe: "ఇతర ప్రజా ఫిర్యాదు" },
+];
+
+export default function GrievanceDrafting({ language }: GrievanceDraftingProps) {
+  const isTe = language === "Telugu";
+
+  const [category, setCategory] = useState<string>("water_supply");
+  const [description, setDescription] = useState<string>("");
+  const [district, setDistrict] = useState<string>("");
+  const [mandal, setMandal] = useState<string>("");
+  const [draftLang, setDraftLang] = useState<"te" | "en">(isTe ? "te" : "en");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [draftResult, setDraftResult] = useState<GrievanceDraftResponse | null>(null);
+  const [editableBody, setEditableBody] = useState<string>("");
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const handleGenerateDraft = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim()) {
+      setError(
+        isTe
+          ? "దయచేసి మీ సమస్య వివరాలను వివరించండి."
+          : "Please describe your grievance in a few sentences."
+      );
+      return;
+    }
+
+    if (!district.trim()) {
+      setError(
+        isTe
+          ? "దయచేసి మీ జిల్లా పేరును నమోదు చేయండి."
+          : "Please enter your district name."
+      );
+      return;
+    }
+
+    if (!mandal.trim()) {
+      setError(
+        isTe
+          ? "దయచేసి మీ మండలం లేదా గ్రామం పేరును నమోదు చేయండి."
+          : "Please enter your mandal or village name."
+      );
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setCopied(false);
+
+    try {
+      const response = await draftGrievance({
+        category,
+        description: description.trim(),
+        district: district.trim(),
+        mandal: mandal.trim(),
+        language: draftLang,
+      });
+
+      setDraftResult(response);
+      setEditableBody(response.complaint_body);
+    } catch (err: unknown) {
+      if (err instanceof ApiException) {
+        if (err.status === 404 || err.status === 503 || err.code === "HTTP_ERROR") {
+          setError(
+            isTe
+              ? "ఫిర్యాదు ముసాయిదా సర్వరు ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది. (Member 4 బాధ్యత: /api/grievances/draft)."
+              : `Grievance drafting backend service is currently offline or unreachable at /api/grievances/draft. (${err.message})`
+          );
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError(
+          isTe
+            ? "సర్వరుతో అనుసంధానం కాలేకపోయింది. దయచేసి బ్యాకెండ్ సర్వరు నడుస్తుందో లేదో తనిఖీ చేయండి."
+            : "Could not connect to backend server. Please verify the FastAPI backend is running."
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!draftResult) return;
+    const fullText = `${isTe ? "విషయం:" : "Subject:"} ${draftResult.subject}\n\n${editableBody}`;
+    navigator.clipboard.writeText(fullText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    });
+  };
+
+  return (
+    <div className="tool-card">
+      <div className="tool-header">
+        <div className="tool-icon">📝</div>
+        <div>
+          <h3>{isTe ? "ప్రజా ఫిర్యాదు ముసాయిదా సహాయకుడు" : "Citizen Grievance Drafting"}</h3>
+          <p className="tool-subtitle">
+            {isTe
+              ? "సమస్యను వివరించండి — అధికారిక దరఖాస్తు ముసాయిదాను సిద్ధం చేసుకోండి"
+              : "Describe your village issue and generate a formal petition for submission"}
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleGenerateDraft} className="grievance-form">
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="field-label" htmlFor="grievance-category">
+              {isTe ? "సమస్య విభాగం" : "Category"}
+            </label>
+            <select
+              id="grievance-category"
+              className="form-select"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {GRIEVANCE_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {isTe ? c.labelTe : c.labelEn}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="field-label" htmlFor="grievance-lang">
+              {isTe ? "ముసాయిదా భాష" : "Draft Language"}
+            </label>
+            <select
+              id="grievance-lang"
+              className="form-select"
+              value={draftLang}
+              onChange={(e) => setDraftLang(e.target.value as "te" | "en")}
+            >
+              <option value="te">తెలుగు (Telugu)</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="field-label" htmlFor="grievance-district">
+              {isTe ? "జిల్లా *" : "District *"}
+            </label>
+            <input
+              id="grievance-district"
+              type="text"
+              className="form-input"
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              placeholder={isTe ? "ఉదా: కాకినాడ (తప్పనిసరి)" : "e.g. Kakinada (required)"}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="field-label" htmlFor="grievance-mandal">
+              {isTe ? "మండలం / గ్రామం *" : "Mandal / Village *"}
+            </label>
+            <input
+              id="grievance-mandal"
+              type="text"
+              className="form-input"
+              value={mandal}
+              onChange={(e) => setMandal(e.target.value)}
+              placeholder={isTe ? "ఉదా: సామర్లకోట మండలం (తప్పనిసరి)" : "e.g. Samalkota Mandal (required)"}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="form-group full-width">
+          <label className="field-label" htmlFor="grievance-desc">
+            {isTe ? "సమస్య వివరణ *" : "Describe the Issue *"}
+          </label>
+          <textarea
+            id="grievance-desc"
+            className="form-textarea"
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={
+              isTe
+                ? "సమస్య ఏమిటి, ఎన్ని రోజుల నుండి ఉంది, ప్రభావిత ప్రాంతం వివరాలను రాయండి..."
+                : "Describe what the issue is, how long it has persisted, and affected areas..."
+            }
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="primary-button generate-draft-btn"
+          disabled={!description.trim() || !district.trim() || !mandal.trim() || isLoading}
+        >
+          {isLoading
+            ? isTe
+              ? "ముసాయిదాను సిద్ధం చేస్తోంది..."
+              : "Drafting Grievance..."
+            : isTe
+            ? "ముసాయిదా దరఖాస్తును రూపొందించండి"
+            : "Generate Grievance Draft"}
+        </button>
+      </form>
+
+      {error && (
+        <div className="notice-box error-notice" role="alert">
+          <span className="notice-icon">⚠️</span>
+          <div>
+            <strong>{isTe ? "గమనిక" : "Notice"}</strong>
+            <p>{error}</p>
+          </div>
+        </div>
+      )}
+
+      {draftResult && (
+        <div className="draft-output-card">
+          <div className="draft-header-row">
+            <h4>{isTe ? "సిద్ధమైన ఫిర్యాదు ముసాయిదా" : "Generated Grievance Draft"}</h4>
+            <button className="copy-btn" onClick={handleCopy}>
+              {copied ? (isTe ? "కాపీ చేయబడింది! ✓" : "Copied! ✓") : isTe ? "📋 కాపీ చేయండి" : "📋 Copy Application"}
+            </button>
+          </div>
+
+          <div className="draft-subject-box">
+            <span className="subject-label">{isTe ? "విషయం:" : "Subject:"}</span>
+            <strong>{draftResult.subject}</strong>
+          </div>
+
+          <div className="editable-body-box">
+            <label className="field-label" htmlFor="editable-body-area">
+              {isTe
+                ? "దరఖాస్తు పాఠ్యం (మీరు అవసరమైన మార్పులు చేసుకోవచ్చు):"
+                : "Application Body (You can edit details directly):"}
+            </label>
+            <textarea
+              id="editable-body-area"
+              className="form-textarea draft-body-area"
+              rows={8}
+              value={editableBody}
+              onChange={(e) => setEditableBody(e.target.value)}
+            />
+          </div>
+
+          {draftResult.recommended_next_steps && draftResult.recommended_next_steps.length > 0 && (
+            <div className="next-steps-section">
+              <h5>{isTe ? "తదుపరి సిఫార్సు చేయబడిన చర్యలు:" : "Recommended Next Steps:"}</h5>
+              <ol className="steps-list">
+                {draftResult.recommended_next_steps.map((step, idx) => (
+                  <li key={idx}>{step}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {draftResult.official_links && draftResult.official_links.length > 0 && (
+            <div className="official-links-section">
+              <h5>{isTe ? "అధికారిక సమర్పణ లింకులు:" : "Official Submission Links:"}</h5>
+              <div className="link-chips">
+                {draftResult.official_links.map((link, idx) => {
+                  const url = typeof link === "string" ? link : link.url;
+                  const label = typeof link === "string" ? link : (link.title || link.url);
+                  return (
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="portal-link-btn"
+                    >
+                      🔗 {label}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="drafting-disclaimer">
+            <span>⚠️</span>
+            <p>
+              <strong>
+                {isTe
+                  ? "ముఖ్య గమనిక: ఇది ఫిర్యాదు దరఖాస్తు ముసాయిదా మాత్రమే."
+                  : "Important Notice: This tool drafts petitions for your convenience."}
+              </strong>{" "}
+              {isTe
+                ? "ఇది ప్రభుత్వ విభాగానికి నేరుగా సమర్పించబడదు. దయచేసి దీన్ని స్పందన (Spandana) పోర్టల్ లేదా మీ గ్రామ సచివాలయంలో సమర్పించండి."
+                : "It does NOT submit petitions to government departments. Please submit your drafted complaint through the Spandana grievance portal or your local Grama Sachivalayam."}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+========== GIT BRANCH ==========
+dev/member-3-voice-ui
+
+========== GIT STATUS ==========
+ M frontend/src/app/globals.css
+ M frontend/src/app/layout.tsx
+ M frontend/src/app/page.tsx
+?? backend/app/
+?? backend/tests/
+?? frontend/src/components/
+?? frontend/src/services/
+?? member3_review.txt
+
+========== BACKEND TESTS ==========
+test_router_endpoints_with_api_prefix (test_voice.TestVoiceRegistration.test_router_endpoints_with_api_prefix) ... ok
+test_speak_endpoint_empty_text_returns_400 (test_voice.TestVoiceRouterEndpoints.test_speak_endpoint_empty_text_returns_400) ... ok
+test_speak_endpoint_success_format_with_mock_provider (test_voice.TestVoiceRouterEndpoints.test_speak_endpoint_success_format_with_mock_provider) ... ok
+test_speak_endpoint_unsupported_lang_returns_422 (test_voice.TestVoiceRouterEndpoints.test_speak_endpoint_unsupported_lang_returns_422) ... ok
+test_speak_endpoint_without_providers_returns_503 (test_voice.TestVoiceRouterEndpoints.test_speak_endpoint_without_providers_returns_503) ... ok
+test_transcribe_endpoint_empty_file_returns_400 (test_voice.TestVoiceRouterEndpoints.test_transcribe_endpoint_empty_file_returns_400) ... ok
+test_transcribe_endpoint_invalid_format_returns_400 (test_voice.TestVoiceRouterEndpoints.test_transcribe_endpoint_invalid_format_returns_400) ... ok
+test_transcribe_endpoint_oversized_audio_returns_413 (test_voice.TestVoiceRouterEndpoints.test_transcribe_endpoint_oversized_audio_returns_413)
+Verify incremental streaming read rejects > 15 MB audio with 413. ... ok
+test_transcribe_endpoint_success_format_with_mock_provider (test_voice.TestVoiceRouterEndpoints.test_transcribe_endpoint_success_format_with_mock_provider) ... ok
+test_transcribe_endpoint_success_with_null_confidence (test_voice.TestVoiceRouterEndpoints.test_transcribe_endpoint_success_with_null_confidence)
+Verify endpoint correctly returns confidence: None when provider does not report it. ... ok
+test_transcribe_endpoint_unsupported_lang_returns_422 (test_voice.TestVoiceRouterEndpoints.test_transcribe_endpoint_unsupported_lang_returns_422) ... ok
+test_transcribe_endpoint_without_providers_returns_503 (test_voice.TestVoiceRouterEndpoints.test_transcribe_endpoint_without_providers_returns_503) ... ok
+test_chunk_text_preserves_all_content (test_voice.TestVoiceSynthesisValidation.test_chunk_text_preserves_all_content)
+Verify chunk_text cleanly segments long sentences without omitting any words. ... ok
+test_speak_does_not_silently_truncate_text (test_voice.TestVoiceSynthesisValidation.test_speak_does_not_silently_truncate_text)
+Verify that OpenAI TTS receives the full text (> 1000 chars) without silent slicing. ... ok
+test_speak_empty_text_error (test_voice.TestVoiceSynthesisValidation.test_speak_empty_text_error) ... ok
+test_speak_no_fake_audio_without_keys (test_voice.TestVoiceSynthesisValidation.test_speak_no_fake_audio_without_keys)
+CRITICAL: Without provider keys, service MUST raise 503, never return a chime. ... Voice synthesis requested but no TTS provider is available or reachable.
+ok
+test_speak_sarvam_chunks_long_text_without_omission (test_voice.TestVoiceSynthesisValidation.test_speak_sarvam_chunks_long_text_without_omission)
+Verify that Sarvam TTS chunks text safely without dropping any words. ... ok
+test_speak_text_too_long_error (test_voice.TestVoiceSynthesisValidation.test_speak_text_too_long_error) ... ok
+test_speak_unsupported_language_error (test_voice.TestVoiceSynthesisValidation.test_speak_unsupported_language_error) ... ok
+test_transcribe_corrupted_audio_error (test_voice.TestVoiceTranscriptionValidation.test_transcribe_corrupted_audio_error) ... ok
+test_transcribe_empty_file_error (test_voice.TestVoiceTranscriptionValidation.test_transcribe_empty_file_error) ... ok
+test_transcribe_fake_audio_content_rejected (test_voice.TestVoiceTranscriptionValidation.test_transcribe_fake_audio_content_rejected)
+Regression test: arbitrary text bytes with .wav or .mp3 extension MUST fail magic byte check. ... ok
+test_transcribe_genuine_confidence_extracted (test_voice.TestVoiceTranscriptionValidation.test_transcribe_genuine_confidence_extracted)
+Verify genuine provider confidence is passed through and not hardcoded. ... ok
+test_transcribe_invalid_audio_format_error (test_voice.TestVoiceTranscriptionValidation.test_transcribe_invalid_audio_format_error) ... ok
+test_transcribe_no_fake_transcript_without_keys (test_voice.TestVoiceTranscriptionValidation.test_transcribe_no_fake_transcript_without_keys)
+CRITICAL: Without provider keys, service MUST raise 503, never invent words. ... Voice transcription requested but no STT provider is available or reachable.
+ok
+test_transcribe_oversized_audio_error (test_voice.TestVoiceTranscriptionValidation.test_transcribe_oversized_audio_error) ... ok
+test_transcribe_provider_without_confidence_returns_none (test_voice.TestVoiceTranscriptionValidation.test_transcribe_provider_without_confidence_returns_none)
+Verify that when provider does not report confidence, it is None, never fabricated. ... ok
+test_transcribe_unsupported_language_error (test_voice.TestVoiceTranscriptionValidation.test_transcribe_unsupported_language_error) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 0.252s
+
+OK
+
+========== TYPESCRIPT CHECK ==========
+
+========== ESLINT ==========
+
+> frontend@0.1.0 lint
+> eslint
+
+
+========== PRODUCTION BUILD ==========
+
+> frontend@0.1.0 build
+> next build
+
+▲ Next.js 16.4.6 (Turbopack)
+✓ Running next.config.ts took 37ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 277ms
+  Running TypeScript ...
+  Finished TypeScript in 1301ms ...
+  Collecting page data using 5 workers ...
+  Generating static pages using 5 workers (0/4) ...
+  Generating static pages using 5 workers (1/4) 
+  Generating static pages using 5 workers (2/4) 
+  Generating static pages using 5 workers (3/4) 
+✓ Generating static pages using 5 workers (4/4) in 726ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+
+
+○  (Static)  prerendered as static content
+
+

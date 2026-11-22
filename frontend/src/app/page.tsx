@@ -1,8 +1,15 @@
-
-
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import {
+  sendChatMessage,
+  Source,
+  ApiException,
+} from "../services/api";
+import DocumentAnalysis from "../components/DocumentAnalysis";
+import NearbyServices from "../components/NearbyServices";
+import GrievanceDrafting from "../components/GrievanceDrafting";
+import AudioSpeakButton from "../components/AudioSpeakButton";
 
 type SpeechRecognitionAlternativeLike = {
   transcript: string;
@@ -43,36 +50,47 @@ type ChatMessage = {
   id: number;
   sender: "user" | "assistant";
   text: string;
+  sources?: Source[];
+  safetyNotice?: string | null;
+  followUps?: string[];
+  isError?: boolean;
 };
 
 const categories = [
   {
     title: "Agriculture",
+    assistantId: "agriculture" as const,
     description: "Farming, crops, pests & weather guidance",
     icon: "🌾",
     color: "agriculture",
   },
   {
     title: "Healthcare",
+    assistantId: "healthcare" as const,
     description: "Health information & healthcare guidance",
     icon: "🩺",
     color: "healthcare",
   },
   {
     title: "Education",
+    assistantId: "education" as const,
     description: "Scholarships, learning & educational support",
     icon: "📚",
     color: "education",
   },
   {
     title: "Government Schemes",
+    assistantId: "schemes" as const,
     description: "Benefits, eligibility & application guidance",
     icon: "🏛️",
     color: "schemes",
   },
 ];
 
+type ActiveTab = "chat" | "documents" | "services" | "grievances";
+
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<ActiveTab>("chat");
   const [language, setLanguage] = useState("Telugu");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [question, setQuestion] = useState("");
@@ -81,32 +99,39 @@ export default function Home() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [backendNotice, setBackendNotice] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-
-  // Reference to the bottom of the chat
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // Reference to the pending mock AI response timer
-  const responseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const lastFailedMessageRef = useRef<string | null>(null);
+  const messageIdCounterRef = useRef(1);
 
   // Automatically scroll to the latest chat content
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }, [messages, isThinking]);
+    if (activeTab === "chat") {
+      chatEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  }, [messages, isThinking, activeTab]);
 
-  // Clear any pending response timer when the component unmounts
+  // Clean up any in-flight requests when the component unmounts
   useEffect(() => {
     return () => {
-      if (responseTimerRef.current !== null) {
-        clearTimeout(responseTimerRef.current);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
 
+  /**
+   * Browser Speech Recognition (Web Speech API).
+   * Note: Browser SpeechRecognition may use browser/vendor network services
+   * (e.g. Google speech servers in Chrome) and is not guaranteed to operate offline.
+   */
   const startVoiceInput = () => {
     const browserWindow = window as WindowWithSpeechRecognition;
 
@@ -129,12 +154,7 @@ export default function Home() {
 
     const recognition = new SpeechRecognitionAPI();
 
-    recognition.lang =
-      language === "Telugu"
-        ? "te-IN"
-        : language === "Hindi"
-          ? "hi-IN"
-          : "en-IN";
+    recognition.lang = language === "Telugu" ? "te-IN" : "en-IN";
 
     recognition.continuous = false;
     recognition.interimResults = false;
@@ -187,50 +207,33 @@ export default function Home() {
     }
   };
 
-  // Temporary mock AI responses until backend integration
-  const getMockResponse = () => {
-    if (language === "Telugu") {
-      return `మీ ప్రశ్న అందింది! 🙏
-
-${
-  selectedCategory
-    ? `${selectedCategory} విభాగానికి సంబంధించిన మీ ప్రశ్నను మేము గుర్తించాము.`
-    : "మీ ప్రశ్నను మేము గుర్తించాము."
-}
-
-ఇది ప్రస్తుతం డెమో సమాధానం మాత్రమే. నిజమైన AI సహాయకుడిని త్వరలో అనుసంధానిస్తాము. మరింత ఖచ్చితమైన సమాచారం కోసం మీ ప్రశ్నకు సంబంధించిన వివరాలను తెలియజేయండి.`;
-    }
-
-    if (language === "Hindi") {
-      return `आपका प्रश्न प्राप्त हुआ! 🙏
-
-${
-  selectedCategory
-    ? `हमने आपके ${selectedCategory} से संबंधित प्रश्न को पहचाना है।`
-    : "हमने आपका प्रश्न समझ लिया है।"
-}
-
-यह अभी एक डेमो उत्तर है। वास्तविक AI सहायक जल्द ही जोड़ा जाएगा। अधिक सटीक जानकारी के लिए कृपया अपने प्रश्न के बारे में कुछ और विवरण दें।`;
-    }
-
-    return `Your question has been received! 🙏
-
-${
-  selectedCategory
-    ? `We have identified your question under ${selectedCategory}.`
-    : "We have received your question."
-}
-
-This is currently a demo response. The real AI assistant will be connected soon. Please provide a little more detail about your question for more specific guidance.`;
+  // Map category title to backend assistant identifier
+  const getAssistantId = (): "agriculture" | "healthcare" | "education" | "schemes" => {
+    const match = categories.find((c) => c.title === selectedCategory);
+    return match ? match.assistantId : "schemes";
   };
 
-  const handleSendMessage = () => {
-    const trimmedQuestion = question.trim();
+  // Map language to backend contract code ('te' or 'en')
+  const getLanguageCode = (): "te" | "en" => {
+    return language === "Telugu" ? "te" : "en";
+  };
+
+  const handleSendMessage = async (textToSend?: string) => {
+    const rawQuestion = textToSend || question;
+    const trimmedQuestion = rawQuestion.trim();
 
     if (!trimmedQuestion || isThinking) return;
 
+    // Abort previous in-flight request if any
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const userMessage: ChatMessage = {
-      id: Date.now(),
+      id: messageIdCounterRef.current++,
       sender: "user",
       text: trimmedQuestion,
     };
@@ -243,38 +246,104 @@ This is currently a demo response. The real AI assistant will be connected soon.
     setQuestion("");
     setVoiceMessage("");
     setIsThinking(true);
+    setBackendNotice(null);
+    lastFailedMessageRef.current = null;
 
-    // Simulate AI response delay and store the timer
-    responseTimerRef.current = setTimeout(() => {
+    try {
+      const response = await sendChatMessage(
+        {
+          message: trimmedQuestion,
+          assistant: getAssistantId(),
+          language: getLanguageCode(),
+          state: "Andhra Pradesh",
+          conversation_id: conversationIdRef.current,
+        },
+        controller.signal
+      );
+
+      // Verify request wasn't cancelled by New Chat
+      if (controller.signal.aborted) return;
+
+      // Update multi-turn conversation ID
+      if (response.conversation_id) {
+        conversationIdRef.current = response.conversation_id;
+      }
+
       const assistantMessage: ChatMessage = {
-        id: Date.now() + 1,
+        id: messageIdCounterRef.current++,
         sender: "assistant",
-        text: getMockResponse(),
+        text: response.answer,
+        sources: response.sources || [],
+        safetyNotice: response.safety_notice || null,
+        followUps: response.follow_up_questions || [],
       };
 
       setMessages((previousMessages) => [
         ...previousMessages,
         assistantMessage,
       ]);
+    } catch (err: unknown) {
+      if (controller.signal.aborted) {
+        // Request was intentionally cancelled (e.g., New Chat)
+        return;
+      }
 
+      lastFailedMessageRef.current = trimmedQuestion;
+
+      let errorNotice = "";
+      if (err instanceof ApiException) {
+        errorNotice = `API Error [${err.code}]: ${err.message}`;
+      } else {
+        errorNotice =
+          language === "Telugu"
+            ? "బ్యాకెండ్ చాట్ సర్వరు అందుబాటులో లేదు (/api/chat). (Member 1 చాట్ ఆర్కెస్ట్రేషన్ అభివృద్ధి చేస్తున్నారు)."
+            : "Backend chat service is unreachable at /api/chat. (Member 1 develops this endpoint).";
+      }
+
+      setBackendNotice(errorNotice);
+
+      // Honest service-unavailable message — no fake answers or fabricated advice!
+      const unavailableMessage: ChatMessage = {
+        id: messageIdCounterRef.current++,
+        sender: "assistant",
+        text:
+          language === "Telugu"
+            ? "క్షమించండి, గ్రామ సహాయక్ చాట్ సర్వీస్ ప్రస్తుతం అందుబాటులో లేదు (/api/chat). దయచేసి కాసేపటి తర్వాత 'మళ్లీ ప్రయత్నించండి' బటన్ నొక్కండి."
+            : "The Grama Sahayak chat service is currently unavailable (/api/chat). Please try again in a few moments using the Retry button.",
+        isError: true,
+      };
+
+      setMessages((previousMessages) => [
+        ...previousMessages,
+        unavailableMessage,
+      ]);
+    } finally {
       setIsThinking(false);
-
-      // Timer has completed
-      responseTimerRef.current = null;
-    }, 1500);
+      abortControllerRef.current = null;
+    }
   };
 
   // Start a fresh conversation and cancel any pending response
   const handleNewChat = () => {
-    if (responseTimerRef.current !== null) {
-      clearTimeout(responseTimerRef.current);
-      responseTimerRef.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
 
+    conversationIdRef.current = null;
+    lastFailedMessageRef.current = null;
     setMessages([]);
     setIsThinking(false);
     setQuestion("");
     setVoiceMessage("");
+    setBackendNotice(null);
+  };
+
+  const handleRetry = () => {
+    if (lastFailedMessageRef.current) {
+      const retryText = lastFailedMessageRef.current;
+      handleSendMessage(retryText);
+    }
   };
 
   return (
@@ -298,202 +367,337 @@ This is currently a demo response. The real AI assistant will be connected soon.
           }}
           aria-label="Select language"
         >
-          <option value="Telugu">తెలుగు</option>
+          <option value="Telugu">తెలుగు (Telugu)</option>
           <option value="English">English</option>
-          <option value="Hindi">हिन्दी</option>
         </select>
       </header>
 
-      {/* Hero */}
-      <section className="hero">
-        <div className="hero-content">
-          <span className="welcome-tag">YOUR DIGITAL VILLAGE ASSISTANT</span>
+      {/* Navigation Tabs for Services */}
+      <nav className="portal-nav" aria-label="Portal Services">
+        <button
+          className={`nav-tab ${activeTab === "chat" ? "active" : ""}`}
+          onClick={() => setActiveTab("chat")}
+        >
+          <span className="nav-tab-icon">💬</span>
+          <span>{language === "Telugu" ? "సహాయక్ చాట్" : "Sahayak Chat"}</span>
+        </button>
 
-          <h2>
-            How can we help
-            <br />
-            <span>you today?</span>
-          </h2>
+        <button
+          className={`nav-tab ${activeTab === "documents" ? "active" : ""}`}
+          onClick={() => setActiveTab("documents")}
+        >
+          <span className="nav-tab-icon">📄</span>
+          <span>{language === "Telugu" ? "పత్రాల విశ్లేషణ" : "Document Analysis"}</span>
+        </button>
 
-          <p>
-            Ask anything. Get trusted guidance in your own language.
-            Simple, accessible help for everyone.
-          </p>
+        <button
+          className={`nav-tab ${activeTab === "services" ? "active" : ""}`}
+          onClick={() => setActiveTab("services")}
+        >
+          <span className="nav-tab-icon">📍</span>
+          <span>{language === "Telugu" ? "సమీప ప్రభుత్వ సేవలు" : "Nearby Services"}</span>
+        </button>
 
-          <button
-            className="voice-button"
-            onClick={startVoiceInput}
-            aria-label={isListening ? "Stop listening" : "Speak your question"}
-          >
-            <span className="mic-icon">
-              {isListening ? "🔴" : "🎙️"}
-            </span>
-            <span>
-              <strong>
-                {isListening ? "Listening..." : "Speak your question"}
-              </strong>
-              <small>
-                {isListening
-                  ? "Tap to stop recording"
-                  : "Tap to ask using your voice"}
-              </small>
-            </span>
-          </button>
+        <button
+          className={`nav-tab ${activeTab === "grievances" ? "active" : ""}`}
+          onClick={() => setActiveTab("grievances")}
+        >
+          <span className="nav-tab-icon">📝</span>
+          <span>{language === "Telugu" ? "ఫిర్యాదు ముసాయిదా" : "Draft Grievance"}</span>
+        </button>
+      </nav>
 
-          {voiceMessage && (
-            <p className="voice-notice" role="status">
-              {voiceMessage}
-            </p>
-          )}
-        </div>
+      {/* View: Document Analysis */}
+      {activeTab === "documents" && <DocumentAnalysis language={language} />}
 
-        <div className="hero-decoration" aria-hidden="true">
-          <span>🌱</span>
-          <span>🌾</span>
-          <span>🍃</span>
-        </div>
-      </section>
+      {/* View: Nearby Services */}
+      {activeTab === "services" && <NearbyServices language={language} />}
 
-      {/* Categories */}
-      <section className="assistance-section">
-        <div className="section-heading">
-          <div>
-            <span className="section-label">HERE TO HELP</span>
-            <h2>What do you need help with?</h2>
-          </div>
-          <p>Choose a category to get started</p>
-        </div>
+      {/* View: Grievances */}
+      {activeTab === "grievances" && <GrievanceDrafting language={language} />}
 
-        <div className="category-grid">
-          {categories.map((category) => (
-            <button
-              key={category.title}
-              className={`category-card ${category.color} ${
-                selectedCategory === category.title ? "selected" : ""
-              }`}
-              onClick={() => setSelectedCategory(category.title)}
-            >
-              <div className="category-icon">{category.icon}</div>
+      {/* View: Chat (Default Homepage Experience) */}
+      {activeTab === "chat" && (
+        <>
+          {/* Hero */}
+          <section className="hero">
+            <div className="hero-content">
+              <span className="welcome-tag">YOUR DIGITAL VILLAGE ASSISTANT</span>
 
-              <div className="category-text">
-                <h3>{category.title}</h3>
-                <p>{category.description}</p>
-              </div>
+              <h2>
+                How can we help
+                <br />
+                <span>you today?</span>
+              </h2>
 
-              <span className="card-arrow">→</span>
-            </button>
-          ))}
-        </div>
+              <p>
+                Ask anything. Get trusted guidance in your own language.
+                Simple, accessible help for everyone.
+              </p>
 
-        {selectedCategory && (
-          <div className="selected-category-message">
-            <span>✓</span>
-            <p>
-              <strong>{selectedCategory}</strong> selected. You can now ask your
-              question below.
-            </p>
-            <button onClick={() => setSelectedCategory("")}>Change</button>
-          </div>
-        )}
-      </section>
+              <button
+                className="voice-button"
+                onClick={startVoiceInput}
+                aria-label={isListening ? "Stop listening" : "Speak your question"}
+              >
+                <span className="mic-icon">
+                  {isListening ? "🔴" : "🎙️"}
+                </span>
+                <span>
+                  <strong>
+                    {isListening ? "Listening..." : "Speak your question"}
+                  </strong>
+                  <small>
+                    {isListening
+                      ? "Tap to stop recording"
+                      : "Tap to ask using your voice"}
+                  </small>
+                </span>
+              </button>
 
-      {/* Chat conversation */}
-      {messages.length > 0 && (
-        <section className="chat-section">
-          <div className="chat-heading">
-            <div>
-              <span className="section-label">YOUR CONVERSATION</span>
-              <h2>Chat with Grama Sahayak</h2>
+              {voiceMessage && (
+                <p className="voice-notice" role="status">
+                  {voiceMessage}
+                </p>
+              )}
             </div>
 
-            <button
-              className="new-chat-button"
-              onClick={handleNewChat}
-            >
-              + New Chat
-            </button>
-          </div>
+            <div className="hero-decoration" aria-hidden="true">
+              <span>🌱</span>
+              <span>🌾</span>
+              <span>🍃</span>
+            </div>
+          </section>
 
-          <div className="chat-messages">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`chat-message ${
-                  message.sender === "user"
-                    ? "user-message"
-                    : "assistant-message"
-                }`}
-              >
-                <div className="message-avatar">
-                  {message.sender === "user" ? "👤" : "🌿"}
-                </div>
-
-                <div className="message-content">
-                  <span className="message-sender">
-                    {message.sender === "user"
-                      ? "You"
-                      : "Grama Sahayak"}
-                  </span>
-
-                  <p>{message.text}</p>
-                </div>
+          {/* Categories */}
+          <section className="assistance-section">
+            <div className="section-heading">
+              <div>
+                <span className="section-label">HERE TO HELP</span>
+                <h2>What do you need help with?</h2>
               </div>
-            ))}
+              <p>Choose a category to get started</p>
+            </div>
 
-            {isThinking && (
-              <div className="chat-message assistant-message thinking-message">
-                <div className="message-avatar">🌿</div>
+            <div className="category-grid">
+              {categories.map((category) => (
+                <button
+                  key={category.title}
+                  className={`category-card ${category.color} ${
+                    selectedCategory === category.title ? "selected" : ""
+                  }`}
+                  onClick={() => setSelectedCategory(category.title)}
+                >
+                  <div className="category-icon">{category.icon}</div>
 
-                <div className="message-content">
-                  <span className="message-sender">Grama Sahayak</span>
-                  <p className="thinking-text">
-                    Thinking<span className="thinking-dots">...</span>
-                  </p>
-                </div>
+                  <div className="category-text">
+                    <h3>{category.title}</h3>
+                    <p>{category.description}</p>
+                  </div>
+
+                  <span className="card-arrow">→</span>
+                </button>
+              ))}
+            </div>
+
+            {selectedCategory && (
+              <div className="selected-category-message">
+                <span>✓</span>
+                <p>
+                  <strong>{selectedCategory}</strong> selected. You can now ask your
+                  question below.
+                </p>
+                <button onClick={() => setSelectedCategory("")}>Change</button>
               </div>
             )}
+          </section>
 
-            {/* Automatic scroll target */}
-            <div ref={chatEndRef} />
-          </div>
+          {/* Chat conversation */}
+          {messages.length > 0 && (
+            <section className="chat-section">
+              <div className="chat-heading">
+                <div>
+                  <span className="section-label">YOUR CONVERSATION</span>
+                  <h2>Chat with Grama Sahayak</h2>
+                </div>
 
-          <p className="demo-notice">
-            Demo mode — responses are mock responses, not verified guidance.
-          </p>
-        </section>
+                <button
+                  className="new-chat-button"
+                  onClick={handleNewChat}
+                >
+                  + New Chat
+                </button>
+              </div>
+
+              <div className="chat-messages">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`chat-message ${
+                      message.sender === "user"
+                        ? "user-message"
+                        : "assistant-message"
+                    }`}
+                  >
+                    <div className="message-avatar">
+                      {message.sender === "user" ? "👤" : "🌿"}
+                    </div>
+
+                    <div className="message-content">
+                      <span className="message-sender">
+                        {message.sender === "user"
+                          ? "You"
+                          : "Grama Sahayak"}
+                      </span>
+
+                      <p>{message.text}</p>
+
+                      {/* Safety Notice */}
+                      {message.safetyNotice && (
+                        <div className="safety-notice-box" role="alert">
+                          <span>⚠️</span>
+                          <div>
+                            <strong>Advisory: </strong>
+                            <span>{message.safetyNotice}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sources */}
+                      {message.sources && message.sources.length > 0 && (
+                        <div className="sources-container">
+                          <span className="sources-title">
+                            {language === "Telugu" ? "అధికారిక ఆధారాలు:" : "Official Sources:"}
+                          </span>
+                          <div className="sources-list">
+                            {message.sources.map((src, sIdx) => (
+                              <div key={sIdx} className="source-item">
+                                <span>🏛️</span>
+                                <a
+                                  href={src.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="source-link"
+                                >
+                                  {src.title}
+                                </a>
+                                {src.publisher && (
+                                  <span className="source-meta">({src.publisher})</span>
+                                )}
+                                {src.verified_at && (
+                                  <span className="source-meta">
+                                    {" "}• {language === "Telugu" ? `ధృవీకరించబడింది: ${src.verified_at}` : `Verified: ${src.verified_at}`}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Follow-up Questions */}
+                      {message.followUps && message.followUps.length > 0 && (
+                        <div className="follow-up-container">
+                          <span className="follow-up-title">
+                            {language === "Telugu" ? "సూచించిన ప్రశ్నలు:" : "Suggested Questions:"}
+                          </span>
+                          <div className="follow-up-chips">
+                            {message.followUps.map((fq, fIdx) => (
+                              <button
+                                key={fIdx}
+                                className="follow-up-chip"
+                                onClick={() => handleSendMessage(fq)}
+                              >
+                                {fq} →
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Voice Audio Listen Button (Member 3) */}
+                      {message.sender === "assistant" && !message.isError && (
+                        <AudioSpeakButton text={message.text} language={language} />
+                      )}
+
+                      {/* Retry Button on Error */}
+                      {message.isError && (
+                        <button className="retry-button" onClick={handleRetry}>
+                          ↻ {language === "Telugu" ? "మళ్లీ ప్రయత్నించండి" : "Retry"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {isThinking && (
+                  <div className="chat-message assistant-message thinking-message">
+                    <div className="message-avatar">🌿</div>
+
+                    <div className="message-content">
+                      <span className="message-sender">Grama Sahayak</span>
+                      <p className="thinking-text">
+                        Thinking<span className="thinking-dots">...</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Automatic scroll target */}
+                <div ref={chatEndRef} />
+              </div>
+
+              {backendNotice ? (
+                <p className="demo-notice" style={{ color: "#b94a48" }}>
+                  ℹ️ {backendNotice}
+                </p>
+              ) : (
+                <p className="demo-notice">
+                  AI Grama Sahayak • Integrated with verified public information and government schemes.
+                </p>
+              )}
+            </section>
+          )}
+
+          {/* Question input */}
+          <section className="question-section">
+            <div className="question-box">
+              <div className="question-icon">💬</div>
+
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={
+                  language === "Telugu"
+                    ? "మీ ప్రశ్నను ఇక్కడ నమోదు చేయండి..."
+                    : "Type your question here..."
+                }
+                aria-label="Type your question"
+              />
+
+              <button
+                className="send-button"
+                disabled={!question.trim() || isThinking}
+                onClick={() => handleSendMessage()}
+              >
+                {isThinking ? "..." : "Send"} <span>➤</span>
+              </button>
+            </div>
+
+            <p className="question-hint">
+              {language === "Telugu"
+                ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు"
+                : "You can type in Telugu or English"}
+            </p>
+          </section>
+        </>
       )}
-
-      {/* Question input */}
-      <section className="question-section">
-        <div className="question-box">
-          <div className="question-icon">💬</div>
-
-          <input
-            type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleSendMessage();
-              }
-            }}
-            placeholder="Type your question here..."
-            aria-label="Type your question"
-          />
-
-          <button
-            className="send-button"
-            disabled={!question.trim() || isThinking}
-            onClick={handleSendMessage}
-          >
-            {isThinking ? "..." : "Send"} <span>➤</span>
-          </button>
-        </div>
-
-        <p className="question-hint">
-          You can type in Telugu, Hindi, or English
-        </p>
-      </section>
 
       {/* Footer */}
       <footer className="site-footer">
