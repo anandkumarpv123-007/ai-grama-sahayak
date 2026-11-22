@@ -1,0 +1,242 @@
+[
+  {
+    "id": "eval_agri_en_01",
+    "query": "How much financial assistance is given to farmers under Annadata Sukhibhava PM Kisan?",
+    "assistant": "agriculture",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": "Kakinada",
+    "expected_source_id": "agri_annadata_sukhibhava_pmkisan",
+    "description": "Factual query on Annadata Sukhibhava financial assistance amount"
+  },
+  {
+    "id": "eval_agri_te_01",
+    "query": "అన్నదాత సుఖీభవ పథకం కింద రైతులకు ఎంత సాయం అందుతుంది?",
+    "assistant": "agriculture",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": "Guntur",
+    "expected_source_id": "agri_annadata_sukhibhava_pmkisan",
+    "description": "Telugu query on farmer financial assistance under Annadata Sukhibhava"
+  },
+  {
+    "id": "eval_agri_en_02",
+    "query": "What natural calamities are covered under PM Fasal Bima Yojana crop insurance in AP?",
+    "assistant": "agriculture",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": "West Godavari",
+    "expected_source_id": "agri_pm_crop_insurance_ap",
+    "description": "Query on crop insurance risk coverage in AP"
+  },
+  {
+    "id": "eval_agri_te_02",
+    "query": "ఆంధ్రప్రదేశ్ ఉచిత పంటల బీమా పథకంలో నష్టపరిహారం ఎలా లభిస్తుంది?",
+    "assistant": "agriculture",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": "Krishna",
+    "expected_source_id": "agri_pm_crop_insurance_ap",
+    "description": "Telugu query on crop insurance compensation"
+  },
+  {
+    "id": "eval_agri_en_03",
+    "query": "What is the interest rate and subsidy for Kisan Credit Card KCC loan?",
+    "assistant": "agriculture",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "agri_kisan_credit_card",
+    "description": "Query on KCC interest subvention rates"
+  },
+  {
+    "id": "eval_agri_te_03",
+    "query": "కిసాన్ క్రెడిట్ కార్డు రుణం వడ్డీ రేటు ఎంత?",
+    "assistant": "agriculture",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "agri_kisan_credit_card",
+    "description": "Telugu query on Kisan Credit Card interest rate"
+  },
+  {
+    "id": "eval_health_en_01",
+    "query": "What is the annual coverage limit under Dr NTR Vaidya Seva Aarogyasri health scheme?",
+    "assistant": "healthcare",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": "Visakhapatnam",
+    "expected_source_id": "health_dr_ntr_vaidya_seva_aarogyasri",
+    "description": "Query on Aarogyasri coverage limit"
+  },
+  {
+    "id": "eval_health_te_01",
+    "query": "ఎన్టీఆర్ వైద్య సేవ ఆరోగ్యశ్రీ కింద ఎంత మొత్తం వరకు ఉచిత వైద్యం లభిస్తుంది?",
+    "assistant": "healthcare",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": "Kakinada",
+    "expected_source_id": "health_dr_ntr_vaidya_seva_aarogyasri",
+    "description": "Telugu query on Dr NTR Vaidya Seva coverage"
+  },
+  {
+    "id": "eval_health_en_02",
+    "query": "When does 104 mobile medical unit visit villages and what medicines are provided?",
+    "assistant": "healthcare",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "health_104_108_emergency_health_services",
+    "description": "Query on 104 MMU rural health services"
+  },
+  {
+    "id": "eval_health_te_02",
+    "query": "అత్యవసర సమయంలో 108 అంబులెన్స్ సేవలు ఎలా పొందాలి?",
+    "assistant": "healthcare",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "health_104_108_emergency_health_services",
+    "description": "Telugu query on 108 emergency ambulance services"
+  },
+  {
+    "id": "eval_health_en_03",
+    "query": "Can AP citizens use Ayushman Bharat PM-JAY cards outside Andhra Pradesh?",
+    "assistant": "healthcare",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "health_ayushman_bharat_pmjay_ap",
+    "description": "Query on Ayushman Bharat portability"
+  },
+  {
+    "id": "eval_edu_en_01",
+    "query": "What is the eligibility and attendance requirement for Thalliki Vandanam scheme?",
+    "assistant": "education",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": "Kakinada",
+    "expected_source_id": "edu_thalliki_vandanam_scheme",
+    "description": "Query on Thalliki Vandanam attendance requirement"
+  },
+  {
+    "id": "eval_edu_te_01",
+    "query": "తల్లికి వందనం పథకానికి అర్హతలు ఏమిటి? విద్యార్థికి ఎంత హాజరు ఉండాలి?",
+    "assistant": "education",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": "Nellore",
+    "expected_source_id": "edu_thalliki_vandanam_scheme",
+    "description": "Telugu query on Thalliki Vandanam eligibility and attendance"
+  },
+  {
+    "id": "eval_edu_en_02",
+    "query": "Who is eligible for Jagananna Vidya Deevena fee reimbursement and Vasathi Deevena?",
+    "assistant": "education",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "edu_vidya_deevena_vasathi_deevena",
+    "description": "Query on Vidya Deevena college fee reimbursement"
+  },
+  {
+    "id": "eval_edu_te_02",
+    "query": "డిగ్రీ ఇంజనీరింగ్ విద్యార్థులకు విద్యా దీవెన వసతి దీవెన ఎంత సాయం అందుతుంది?",
+    "assistant": "education",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "edu_vidya_deevena_vasathi_deevena",
+    "description": "Telugu query on Vasathi Deevena maintenance allowance"
+  },
+  {
+    "id": "eval_schemes_en_01",
+    "query": "What is the monthly pension amount for old age persons and disabled individuals under NTR Bharosa?",
+    "assistant": "schemes",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": "Anantapur",
+    "expected_source_id": "schemes_ntr_bharosa_pension",
+    "description": "Query on NTR Bharosa pension amounts"
+  },
+  {
+    "id": "eval_schemes_te_01",
+    "query": "ఎన్టీఆర్ భరోసా వృద్ధాప్య పింఛను మరియు దివ్యాంగుల పెన్షన్ ఎంత?",
+    "assistant": "schemes",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": "Kurnool",
+    "expected_source_id": "schemes_ntr_bharosa_pension",
+    "description": "Telugu query on NTR Bharosa pension amounts"
+  },
+  {
+    "id": "eval_schemes_en_02",
+    "query": "What citizen services are delivered within 72 hours at Grama Ward Sachivalayam?",
+    "assistant": "schemes",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "schemes_grama_ward_sachivalayam",
+    "description": "Query on Grama Sachivalayam citizen services and SLAs"
+  },
+  {
+    "id": "eval_schemes_te_02",
+    "query": "గ్రామ సచివాలయంలో కుల మరియు ఆదాయ ధృవీకరణ పత్రాలు ఎలా పొందాలి?",
+    "assistant": "schemes",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": "schemes_grama_ward_sachivalayam",
+    "description": "Telugu query on obtaining certificates at Grama Sachivalayam"
+  },
+  {
+    "id": "eval_schemes_en_03",
+    "query": "How many days of guaranteed employment are provided under MGNREGS in Andhra Pradesh?",
+    "assistant": "schemes",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": "Prakasam",
+    "expected_source_id": "schemes_mgnregs_andhra_pradesh",
+    "description": "Query on MGNREGS 100 days wage employment"
+  },
+  {
+    "id": "eval_schemes_te_03",
+    "query": "ఉపాధి హామీ పథకం కింద ఎన్ని రోజుల పని కల్పిస్తారు?",
+    "assistant": "schemes",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": "Chittoor",
+    "expected_source_id": "schemes_mgnregs_andhra_pradesh",
+    "description": "Telugu query on MGNREGS employment days"
+  },
+  {
+    "id": "eval_schemes_en_04",
+    "query": "What is the financial grant given for house construction under Pedalandariki Illu?",
+    "assistant": "schemes",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": "Kakinada",
+    "expected_source_id": "schemes_pedalandariki_illu_housing",
+    "description": "Query on Pedalandariki Illu construction assistance"
+  },
+  {
+    "id": "eval_negative_01",
+    "query": "How to buy Bitcoin cryptocurrency online anonymously?",
+    "assistant": "schemes",
+    "language": "en",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": null,
+    "description": "Negative query: totally unrelated cryptocurrency query should return empty"
+  },
+  {
+    "id": "eval_negative_02",
+    "query": "చంద్రుని పైకి రాకెట్ ఎలా ప్రయోగించాలి?",
+    "assistant": "agriculture",
+    "language": "te",
+    "state": "Andhra Pradesh",
+    "district": null,
+    "expected_source_id": null,
+    "description": "Negative query: Telugu unrelated space query should return empty"
+  }
+]
