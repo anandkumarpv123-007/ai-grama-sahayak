@@ -56,7 +56,7 @@ def test_chat_valid_contract_with_conv_id():
 
 def test_chat_empty_retrieval_returns_unavailability_notice_and_no_sources():
     payload = {
-        "message": "What are new fertilizers in 2026?",
+        "message": "cryptocurrency stock trading blockchain mining",
         "assistant": "agriculture",
         "language": "en",
     }
