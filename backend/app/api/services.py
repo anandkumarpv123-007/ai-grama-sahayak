@@ -66,6 +66,17 @@ def get_nearby_services(
 
     Never invents or fabricates locations. Returns empty services list if no verified match.
     """
+    if hasattr(service_type, "default"):
+        service_type = service_type.default
+    if hasattr(district, "default"):
+        district = district.default
+    if hasattr(latitude, "default"):
+        latitude = latitude.default
+    if hasattr(longitude, "default"):
+        longitude = longitude.default
+    if hasattr(radius_km, "default"):
+        radius_km = radius_km.default
+
     has_lat = latitude is not None
     has_lon = longitude is not None
 

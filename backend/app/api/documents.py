@@ -95,6 +95,9 @@ def analyze_document(
 
     Enforces 10 MB maximum size limit during stream reading and validates file format/MIME type.
     """
+    if hasattr(document_type, "default"):
+        document_type = document_type.default
+
     if not file or not getattr(file, "filename", None):
         return _make_error_response(
             code="VALIDATION_ERROR",

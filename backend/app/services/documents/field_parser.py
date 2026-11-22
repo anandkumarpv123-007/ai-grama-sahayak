@@ -140,7 +140,7 @@ def detect_document_type(text: str, user_hint: Optional[str] = None) -> str:
 
 def _extract_ap_district(text: str) -> Optional[str]:
     for dist in AP_DISTRICTS:
-        pattern = r"\b" + re.escape(dist) + r"\b"
+        pattern = r"\b" + re.escape(dist) + r"(?=[A-Z\s,.:;\n]|$|\b)"
         if re.search(pattern, text, re.IGNORECASE):
             return dist
     return None
@@ -179,11 +179,15 @@ def parse_fields_from_text(text: str, doc_type: str) -> Dict[str, Any]:
 
     if doc_type == "income_certificate":
         # Certificate Number
-        cert_match = re.search(
-            r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No|Application\s*Number)\s*[:\-]?\s*([A-Za-z0-9\-_/]+)",
-            text,
-            re.IGNORECASE,
-        ) or re.search(r"\b(IC[0-9]{8,14}|DEMO[0-9A-Za-z]+)\b", text)
+        cert_match = (
+            re.search(r"\b(IC[0-9]{8,14})\b", text)
+            or re.search(
+                r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No|Application\s*Number)\s*[:\-]?\s*(IC[0-9]{8,14}|DEMO[0-9A-Za-z]+|[A-Za-z0-9\-_/]+)",
+                text,
+                re.IGNORECASE,
+            )
+            or re.search(r"\b(DEMO[0-9A-Za-z]+)\b", text)
+        )
         if cert_match:
             fields["certificate_number"] = cert_match.group(1).strip()
 
@@ -231,11 +235,15 @@ def parse_fields_from_text(text: str, doc_type: str) -> Dict[str, Any]:
             fields["issue_date"] = date_matches[0]
 
     elif doc_type == "caste_certificate":
-        cert_match = re.search(
-            r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No)\s*[:\-]?\s*([A-Za-z0-9\-_/]+)",
-            text,
-            re.IGNORECASE,
-        ) or re.search(r"\b(CGC[0-9]{8,14}|CC[0-9]{8,14}|DEMO[0-9A-Za-z]+)\b", text)
+        cert_match = (
+            re.search(r"\b(CGC[0-9]{8,14}|CC[0-9]{8,14})\b", text)
+            or re.search(
+                r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No)\s*[:\-]?\s*(CGC[0-9]{8,14}|CC[0-9]{8,14}|DEMO[0-9A-Za-z]+|[A-Za-z0-9\-_/]+)",
+                text,
+                re.IGNORECASE,
+            )
+            or re.search(r"\b(DEMO[0-9A-Za-z]+)\b", text)
+        )
         if cert_match:
             fields["certificate_number"] = cert_match.group(1).strip()
 
@@ -262,11 +270,15 @@ def parse_fields_from_text(text: str, doc_type: str) -> Dict[str, Any]:
             fields["issue_date"] = date_matches[0]
 
     elif doc_type in ("ration_card", "rice_card"):
-        card_match = re.search(
-            r"(?:Ration\s*Card\s*No|Rice\s*Card\s*No|Card\s*No)\s*[:\-]?\s*([A-Za-z0-9]+)",
-            text,
-            re.IGNORECASE,
-        ) or re.search(r"\b([WR]AP[0-9]{10,12}|RC[0-9]{10,12}|DEMO[0-9A-Za-z]+)\b", text)
+        card_match = (
+            re.search(r"\b([WR]AP[0-9]{10,12}|RC[0-9]{10,12})\b", text)
+            or re.search(
+                r"(?:Ration\s*Card\s*No|Rice\s*Card\s*No|Card\s*No)\s*[:\-]?\s*([WR]AP[0-9]{10,12}|RC[0-9]{10,12}|DEMO[0-9A-Za-z]+|[A-Za-z0-9]+)",
+                text,
+                re.IGNORECASE,
+            )
+            or re.search(r"\b(DEMO[0-9A-Za-z]+)\b", text)
+        )
         if card_match:
             fields["ration_card_number"] = card_match.group(1).strip()
 

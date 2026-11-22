@@ -83,11 +83,13 @@ def create_grievance_draft(request: GrievanceDraftRequest):
             details=missing_fields,
         )
 
-    clean_lang = str(language).strip().lower()
+    raw_lang = getattr(request, "language", "en")
+    lang_val = raw_lang.value if hasattr(raw_lang, "value") else str(raw_lang)
+    clean_lang = str(lang_val).strip().lower()
     if clean_lang not in ("en", "te"):
         return _make_error_response(
             code="VALIDATION_ERROR",
-            message=f"Unsupported language '{language}'. Supported languages are 'en' (English) and 'te' (Telugu).",
+            message=f"Unsupported language '{raw_lang}'. Supported languages are 'en' (English) and 'te' (Telugu).",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 

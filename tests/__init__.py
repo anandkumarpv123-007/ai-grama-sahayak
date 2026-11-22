@@ -205,4 +205,34 @@ def _setup_test_shims():
             sys.modules["pypdf"] = pypdf_mod
 
 
+def _enhance_real_fastapi_for_tests():
+    try:
+        import json
+        from starlette.responses import JSONResponse as _StarletteJSONResponse
+        if not hasattr(_StarletteJSONResponse, "content"):
+            def _get_content(self):
+                if not hasattr(self, "_parsed_content"):
+                    try:
+                        self._parsed_content = json.loads(self.body.decode("utf-8"))
+                    except Exception:
+                        self._parsed_content = None
+                return self._parsed_content
+            _StarletteJSONResponse.content = property(_get_content)
+    except ImportError:
+        pass
+
+    try:
+        from starlette.datastructures import UploadFile as _StarletteUploadFile, Headers
+        _orig_upload_init = _StarletteUploadFile.__init__
+        def _compat_upload_init(self, file=None, size=None, filename=None, headers=None, content_type=None, **kwargs):
+            if content_type and not headers:
+                headers = Headers({"content-type": content_type})
+            return _orig_upload_init(self, file=file, size=size, filename=filename, headers=headers, **kwargs)
+        _StarletteUploadFile.__init__ = _compat_upload_init
+    except ImportError:
+        pass
+
+
 _setup_test_shims()
+_enhance_real_fastapi_for_tests()
+

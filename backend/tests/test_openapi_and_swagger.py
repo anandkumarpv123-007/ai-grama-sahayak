@@ -1,8 +1,14 @@
+import importlib.util
 import pytest
 from starlette.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
+
+has_voice = importlib.util.find_spec("app.api.voice") is not None
+has_documents = importlib.util.find_spec("app.api.documents") is not None
+has_services = importlib.util.find_spec("app.api.services") is not None
+has_grievances = importlib.util.find_spec("app.api.grievances") is not None
 
 AGREED_ENDPOINTS = [
     "/api/health",
@@ -39,6 +45,7 @@ def test_openapi_schema_contains_all_eight_agreed_endpoints():
         assert endpoint in paths, f"Endpoint {endpoint} missing from registered OpenAPI paths"
 
 
+@pytest.mark.skipif(has_voice, reason="Member 3 voice router is integrated; placeholder not active")
 def test_voice_transcribe_placeholder_returns_503():
     """Placeholder must return 503 Service Unavailable, never fabricate transcriptions."""
     import io
@@ -54,6 +61,7 @@ def test_voice_transcribe_placeholder_returns_503():
     assert "unavailable" in data["error"]["message"].lower()
 
 
+@pytest.mark.skipif(has_voice, reason="Member 3 voice router is integrated; placeholder not active")
 def test_voice_speak_placeholder_returns_503():
     """Placeholder must return 503 Service Unavailable, never fabricate audio."""
     payload = {"text": "నమస్కారం", "language": "te"}
@@ -64,6 +72,7 @@ def test_voice_speak_placeholder_returns_503():
     assert "unavailable" in data["error"]["message"].lower()
 
 
+@pytest.mark.skipif(has_documents, reason="Member 4 documents router is integrated; placeholder not active")
 def test_documents_analyze_placeholder_returns_503():
     """Placeholder must return 503 Service Unavailable, never fabricate document analysis."""
     import io
@@ -79,6 +88,7 @@ def test_documents_analyze_placeholder_returns_503():
     assert "unavailable" in data["error"]["message"].lower()
 
 
+@pytest.mark.skipif(has_services, reason="Member 4 services router is integrated; placeholder not active")
 def test_services_nearby_placeholder_returns_503():
     """Placeholder must return 503 Service Unavailable, never fabricate nearby services."""
     response = client.get("/api/services/nearby?district=Kakinada&service_type=csc")
@@ -88,6 +98,7 @@ def test_services_nearby_placeholder_returns_503():
     assert "unavailable" in data["error"]["message"].lower()
 
 
+@pytest.mark.skipif(has_grievances, reason="Member 4 grievances router is integrated; placeholder not active")
 def test_grievances_draft_placeholder_returns_503():
     """Placeholder must return 503 Service Unavailable, never fabricate grievances."""
     payload = {

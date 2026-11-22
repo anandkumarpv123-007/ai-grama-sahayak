@@ -238,7 +238,7 @@ class TestApiEndpoints(unittest.TestCase):
 
     def test_grievances_draft_endpoint_validation_error(self):
         """Test POST /api/grievances/draft with missing fields returning HTTP 422."""
-        req = GrievanceDraftRequest(
+        req = GrievanceDraftRequest.model_construct(
             category="",
             description="",
             district="Kakinada",
@@ -252,7 +252,7 @@ class TestApiEndpoints(unittest.TestCase):
 
     def test_grievances_draft_endpoint_unsupported_language(self):
         """Test POST /api/grievances/draft with unsupported language returning HTTP 422."""
-        req = GrievanceDraftRequest(
+        req = GrievanceDraftRequest.model_construct(
             category="water_supply",
             description="Some description",
             district="Kakinada",
@@ -268,9 +268,8 @@ class TestApiEndpoints(unittest.TestCase):
     def test_regression_missing_shared_schemas_fails_clearly(self):
         """Regression: importing API router fails clearly when Member 1's shared schema is missing."""
         import importlib
-        # Verify that without app.schemas.documents, direct import raises ModuleNotFoundError
-        saved = sys.modules.pop("app.schemas.documents", None)
-        saved_pkg = sys.modules.pop("app.schemas", None)
+        saved = sys.modules.get("app.schemas.documents")
+        sys.modules["app.schemas.documents"] = None
         try:
             # When app.schemas is not available, import must fail
             with self.assertRaises((ModuleNotFoundError, ImportError)):
@@ -278,8 +277,8 @@ class TestApiEndpoints(unittest.TestCase):
         finally:
             if saved is not None:
                 sys.modules["app.schemas.documents"] = saved
-            if saved_pkg is not None:
-                sys.modules["app.schemas"] = saved_pkg
+            else:
+                sys.modules.pop("app.schemas.documents", None)
 
 
 if __name__ == "__main__":

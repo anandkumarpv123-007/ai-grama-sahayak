@@ -1,6 +1,6 @@
-from typing import List
+from typing import Any, Dict, List, Union
 from pydantic import BaseModel, ConfigDict, Field
-from app.schemas.common import LanguageCode
+from app.schemas.common import LanguageCode, Source
 
 
 class GrievanceDraftRequest(BaseModel):
@@ -22,7 +22,7 @@ class GrievanceDraftResponse(BaseModel):
         default_factory=list,
         description="Actionable steps for the citizen to submit through official grievance channels",
     )
-    official_links: List[str] = Field(
+    official_links: List[Union[str, Source, Dict[str, Any]]] = Field(
         default_factory=list,
-        description="Official grievance redressal portals (e.g., Spandana, CPGRAMS)",
+        description="Official grievance redressal portals (e.g., Spandana, CPGRAMS) or verified sources",
     )
