@@ -22,10 +22,15 @@ import unittest
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(BASE_DIR / "backend"))
 
-# Import test setup first to configure test shims
+# Import test setup first to configure test shims from the root tests package
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 import tests  # noqa: F401
+
+backend_dir = BASE_DIR / "backend"
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 from app.api.documents import (
     router as doc_router,
