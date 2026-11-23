@@ -34,7 +34,7 @@ class MultilingualTokenizer:
     }
 
     TELUGU_STOPWORDS = {
-        "ఎలా", "ఎప్పుడు", "ఎక్కడ", "ఎవరు", "ఏమిటి", "ఏది", "ఎంత", "మరియు",
+        "ఎలా", "ఎప్పుడు", "ఎక్కడ", "ఎవరు", "ఏమిటి", "ఏది", "మరియు",
         "లేదా", "యొక్క", "పై", "కింద", "లో", "నుండి", "ద్వారా", "కోసం",
         "గురించి", "కూడా", "కాని", "అయితే", "ఉంది", "ఉన్నాయి", "ఉన్న", "అని",
     }
@@ -91,6 +91,29 @@ class MultilingualTokenizer:
         "గృహ": ["housing", "house", "residence"],
         "రేషన్": ["ration", "rice", "card", "bpl"],
         "రైస్ కార్డు": ["rice", "card", "ration", "white"],
+
+        # Intent & General Governance Concepts (Amount, Assistance, Eligibility, Documents, Application)
+        "సహాయం": ["assistance", "financial", "support", "payment"],
+        "సాయం": ["assistance", "financial", "support"],
+        "ఆర్థిక": ["financial", "assistance", "money", "funds"],
+        "ఎంత": ["amount", "assistance", "payment", "rate"],
+        "డబ్బులు": ["money", "financial", "amount"],
+        "చెల్లింపు": ["payment", "disbursement", "installment"],
+        "చెల్లింపులు": ["payments", "disbursements", "installments"],
+        "వాయిదా": ["installment", "phase", "payment"],
+        "వాయిదాల": ["installments", "phases", "payment"],
+        "మొత్తం": ["amount", "total", "assistance"],
+        "వేతనం": ["wage", "salary", "payment"],
+        "వేతనాలు": ["wages", "salaries", "payments"],
+        "పరిమితి": ["limit", "ceiling", "coverage"],
+        "అర్హత": ["eligibility", "eligible", "criteria"],
+        "అర్హతలు": ["eligibility", "eligible", "criteria", "rules"],
+        "అర్హులు": ["eligible", "beneficiary", "beneficiaries"],
+        "నిబంధనలు": ["conditions", "rules", "guidelines", "criteria"],
+        "పత్రాలు": ["documents", "records", "certificates"],
+        "కాగితాలు": ["documents", "records"],
+        "దరఖాస్తు": ["application", "apply", "enrollment", "registration"],
+        "నమోదు": ["enrollment", "registration", "booking"],
     }
 
     def tokenize(self, text: str, include_ngrams: bool = True) -> List[str]:
@@ -143,6 +166,97 @@ class MultilingualTokenizer:
             if len(tok) > 1:
                 informative.add(tok_lower)
         return informative
+
+
+
+# Intent taxonomy for governance queries (Telugu and English)
+INTENT_KEYWORDS: Dict[str, Dict[str, Set[str]]] = {
+    "amount": {
+        "en": {
+            "amount", "payment", "financial", "assistance", "installment",
+            "installments", "rate", "rates", "wage", "wages", "payout",
+            "limit", "cost", "rupees", "rs", "fee", "fees", "subvention",
+        },
+        "te": {
+            "ఎంత", "సహాయం", "సాయం", "డబ్బులు", "చెల్లింపు", "చెల్లింపులు",
+            "వాయిదా", "వాయిదాల", "మొత్తం", "పరిమితి", "వేతనం", "వేతనాలు",
+            "ఖర్చు", "రూపాయలు", "ఫీజు",
+        },
+    },
+    "eligibility": {
+        "en": {
+            "eligibility", "eligible", "criteria", "conditions", "rules",
+            "qualify", "qualification", "attendance", "who", "exclusion",
+            "ineligibility",
+        },
+        "te": {
+            "అర్హత", "అర్హతలు", "అర్హులు", "నిబంధనలు", "ఎవరు", "ఎవరెవరు",
+            "హాజరు", "అనర్హత", "అనర్హతలు",
+        },
+    },
+    "documents": {
+        "en": {
+            "document", "documents", "records", "proof", "certificate",
+            "certificates", "card", "passbook", "aadhaar",
+        },
+        "te": {
+            "పత్రాలు", "కాగితాలు", "డాక్యుమెంట్లు", "సర్టిఫికెట్లు",
+            "కార్డు", "ఆధార్", "పాస్ బుక్", "పాస్‌బుక్",
+        },
+    },
+    "application": {
+        "en": {
+            "apply", "application", "procedure", "process", "steps",
+            "portal", "registration", "enrollment", "grievance", "status",
+        },
+        "te": {
+            "దరఖాస్తు", "దరఖాస్తులు", "నమోదు", "విధానం", "ఎలా", "ఎక్కడ",
+            "పరిష్కారం",
+        },
+    },
+}
+
+SECTION_INTENT_MAP: Dict[str, Set[str]] = {
+    "amount": {
+        "financial assistance", "payment breakdown", "payout rates", "wages",
+        "coverage limit", "concessional rates", "interest subvention",
+        "ఆర్థిక సహాయం", "వాయిదాల వివరాలు", "చెల్లింపులు", "వేతనాలు",
+        "పరిమితి", "రేట్లు", "fees", "fee reimbursement", "రీయింబర్స్‌మెంట్",
+        "benefits", "ప్రయోజనాలు", "monthly payout",
+    },
+    "eligibility": {
+        "eligibility", "eligibility criteria", "ineligibility", "exclusions",
+        "లబ్ధిదారుల అర్హత", "అర్హతలు", "అర్హత నిబంధనలు", "అనర్హతలు",
+        "నిబంధనలు", "mandatory conditions",
+    },
+    "documents": {
+        "required documents", "documents", "అవసరమైన పత్రాలు", "పత్రాలు",
+        "card generation",
+    },
+    "application": {
+        "application", "enrollment procedure", "how to apply", "how to avail",
+        "how to obtain", "claim settlement", "దరఖాస్తు", "నమోదు",
+        "సేవలు పొందే విధానం", "సంప్రదింపు", "grievance redressal",
+    },
+}
+
+
+def detect_query_intents(query: str, query_tokens: List[str]) -> Set[str]:
+    """
+    Detects question intent categories (amount, eligibility, documents, application)
+    across English and Telugu queries.
+    """
+    detected: Set[str] = set()
+    q_lower = query.lower()
+    tok_set = set(t.lower() for t in query_tokens)
+    for intent, lang_map in INTENT_KEYWORDS.items():
+        for kw in lang_map["en"]:
+            if kw in tok_set or f" {kw} " in f" {q_lower} ":
+                detected.add(intent)
+        for kw in lang_map["te"]:
+            if kw in tok_set or kw in q_lower:
+                detected.add(intent)
+    return detected
 
 
 class HybridMultilingualIndexer:
@@ -228,17 +342,20 @@ class HybridMultilingualIndexer:
         top_k: int = 5,
     ) -> List[RetrievedChunk]:
         """
-        Executes domain-filtered, multilingual hybrid search with confidence and coverage gating.
+        Executes domain-filtered, multilingual hybrid search with intent alignment,
+        continuous ranking scores, and coverage gating.
         """
         if not query or not query.strip() or not self.chunks:
             return []
 
         clean_query = query.strip()
         informative_tokens = self.tokenizer.extract_informative_tokens(clean_query)
+        raw_query_words = set(self.tokenizer.tokenize(clean_query, include_ngrams=False))
         query_tokens = self.tokenizer.tokenize(clean_query, include_ngrams=True)
         if not query_tokens:
             return []
 
+        intents = detect_query_intents(clean_query, query_tokens)
         query_counter = Counter(query_tokens)
         candidate_scores: Dict[int, float] = {}
 
@@ -248,8 +365,15 @@ class HybridMultilingualIndexer:
             if idf <= 0.0:
                 continue
 
-            # Give full weight to words and synonyms, reduced weight to character n-grams
-            token_weight = 0.35 if (len(token) in (3, 4) and any('\u0C00' <= c <= '\u0C7F' for c in token)) else 1.0
+            # Weighting: direct query words 1.0, Telugu character n-grams 0.35, expanded synonyms 0.50
+            is_ngram = len(token) in (3, 4) and any('\u0C00' <= c <= '\u0C7F' for c in token)
+            is_direct_word = token in raw_query_words or token.lower() in raw_query_words
+            if is_ngram:
+                token_weight = 0.35
+            elif is_direct_word:
+                token_weight = 1.0
+            else:
+                token_weight = 0.50
 
             postings = self.inverted_index.get(token, [])
             for doc_idx, doc_freq in postings:
@@ -275,9 +399,15 @@ class HybridMultilingualIndexer:
         if not candidate_scores:
             return []
 
+        # Check maximum document title matches among candidates to determine if a specific scheme was named
+        max_title_matches = max(
+            (sum(1 for tok in informative_tokens if tok in self.chunks[d].title.lower()) for d in candidate_scores),
+            default=0,
+        )
+
         scored_results: List[RetrievedChunk] = []
 
-        # 2. Coverage and confidence evaluation
+        # 2. Coverage, intent alignment, and ranking evaluation
         for doc_idx, raw_score in candidate_scores.items():
             chunk = self.chunks[doc_idx]
             doc_token_set = self.doc_token_sets[doc_idx]
@@ -295,17 +425,51 @@ class HybridMultilingualIndexer:
             if informative_tokens and coverage == 0.0:
                 continue
 
-            # Title and section matching bonus
+            # Document Title match score
             title_lower = chunk.title.lower()
-            bonus = 0.0
-            for token in informative_tokens:
-                if token in title_lower:
-                    bonus += 0.25
+            title_matches = sum(1 for tok in informative_tokens if tok in title_lower)
+            if title_matches >= 2:
+                title_score = 1.0
+            elif title_matches == 1:
+                title_score = 0.40
+            else:
+                title_score = 0.0
 
-            # Combine coverage, raw BM25, and title bonus
-            # Scale raw BM25 safely without artificial 100% inflation
-            scaled_bm25 = min(1.0, raw_score / 12.0)
-            final_score = (coverage * 0.45) + (scaled_bm25 * 0.35) + bonus
+            # Section Title & Intent alignment score
+            sec_title = chunk.metadata.get("section_title", "").lower()
+            sec_lexical_matches = sum(1 for tok in informative_tokens if tok in sec_title)
+            sec_lexical_score = min(1.0, sec_lexical_matches / 2.0) if sec_lexical_matches > 0 else 0.0
+
+            intent_match_score = 0.0
+            if intents and sec_title:
+                for intent in intents:
+                    section_kw_set = SECTION_INTENT_MAP.get(intent, set())
+                    for target in section_kw_set:
+                        if target.lower() in sec_title:
+                            # Full intent bonus if document matches title, or if no candidate had strong title match
+                            if title_score >= 0.40 or max_title_matches < 2:
+                                intent_match_score = 1.0
+                            else:
+                                intent_match_score = 0.0
+                            break
+                    if intent_match_score > 0:
+                        break
+
+            sec_score = max(sec_lexical_score, intent_match_score)
+            if max_title_matches >= 2:
+                sec_score = sec_score * (0.30 + 0.70 * title_score)
+
+            # Continuous, non-saturating BM25 scale
+            scaled_bm25 = raw_score / (raw_score + 20.0)
+
+            # Balanced multi-signal formula (weights sum to 1.00)
+            # Internal ranking metric: BM25 (0.35) + Coverage (0.25) + Title (0.20) + Section/Intent (0.20)
+            final_score = (
+                (scaled_bm25 * 0.35) +
+                (coverage * 0.25) +
+                (title_score * 0.20) +
+                (sec_score * 0.20)
+            )
 
             # Minimum score threshold
             if final_score >= self.min_score_threshold:
@@ -315,7 +479,7 @@ class HybridMultilingualIndexer:
                     url=chunk.url,
                     publisher=chunk.publisher,
                     verified_at=chunk.verified_at,
-                    score=min(1.0, final_score),
+                    score=round(min(1.0, final_score), 4),
                     metadata=dict(chunk.metadata),
                 )
                 scored_results.append(scored_chunk)
