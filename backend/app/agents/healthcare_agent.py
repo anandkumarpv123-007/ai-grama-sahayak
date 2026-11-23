@@ -1,6 +1,7 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from app.agents.base import BaseSpecialistAgent
 from app.schemas.common import AssistantIdentifier, LanguageCode
+from app.core.emergency_detector import check_clinical_emergency
 
 
 class HealthcareAgent(BaseSpecialistAgent):
@@ -49,3 +50,29 @@ class HealthcareAgent(BaseSpecialistAgent):
             "Do you need to check if a specific treatment or surgery is covered under Dr. YSR Aarogyasri / Ayushman Bharat?",
             "Would you like information on maternal health assistance or child immunization schedules?",
         ]
+
+    def process_query(
+        self,
+        query: str,
+        language: LanguageCode,
+        state: Optional[str] = None,
+        district: Optional[str] = None,
+        retrieved_chunks: Optional[List[Dict[str, Any]]] = None,
+        retrieval_outcome: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """
+        Processes healthcare queries, intercepting clinical emergencies before retrieval
+        or fallbacks.
+        """
+        emergency_result = check_clinical_emergency(query, language)
+        if emergency_result:
+            return emergency_result
+
+        return super().process_query(
+            query=query,
+            language=language,
+            state=state,
+            district=district,
+            retrieved_chunks=retrieved_chunks,
+            retrieval_outcome=retrieval_outcome,
+        )

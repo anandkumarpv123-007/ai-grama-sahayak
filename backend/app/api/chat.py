@@ -2,8 +2,14 @@ import logging
 import uuid
 from fastapi import APIRouter, status
 from app.schemas.chat import ChatRequest, ChatResponse
+from app.schemas.common import AssistantIdentifier
 from app.agents.router import agent_router
 from app.core.retrieval_client import fetch_retrieval_context
+from app.core.emergency_detector import check_clinical_emergency
+from app.core.scheme_ambiguity_detector import (
+    is_ambiguous_scheme_query,
+    get_scheme_clarification_response,
+)
 from app.core.exceptions import BadRequestException
 from app.database.session import get_session_factory
 from app.models.conversation import Conversation
@@ -93,7 +99,47 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     if not conv_id or not conv_id.strip():
         conv_id = f"conv_{uuid.uuid4().hex[:12]}"
 
-    # 3. Call internal retrieval interface owned by Member 2
+    # 3. Deterministic clinical emergency safety guard
+    # Operates BEFORE RAG retrieval or generic no-results fallbacks.
+    emergency_result = check_clinical_emergency(
+        query=clean_message,
+        language=request.language,
+    )
+    if emergency_result:
+        response = ChatResponse(
+            conversation_id=conv_id,
+            answer=emergency_result["answer"],
+            assistant=request.assistant,
+            language=request.language,
+            sources=[],
+            needs_follow_up=False,
+            follow_up_questions=emergency_result["follow_up_questions"],
+            safety_notice=emergency_result["safety_notice"],
+        )
+        _save_chat_interaction_safely(conv_id, request, response)
+        return response
+
+    # 4. Ambiguous government scheme clarification
+    # When a user asks about "the scheme" without identifying which scheme, return a clear
+    # clarification question rather than concatenating unrelated schemes.
+    if request.assistant == AssistantIdentifier.SCHEMES and is_ambiguous_scheme_query(
+        clean_message, request.language
+    ):
+        clarification_result = get_scheme_clarification_response(request.language)
+        response = ChatResponse(
+            conversation_id=conv_id,
+            answer=clarification_result["answer"],
+            assistant=request.assistant,
+            language=request.language,
+            sources=[],
+            needs_follow_up=True,
+            follow_up_questions=clarification_result["follow_up_questions"],
+            safety_notice=clarification_result["safety_notice"],
+        )
+        _save_chat_interaction_safely(conv_id, request, response)
+        return response
+
+    # 5. Call internal retrieval interface owned by Member 2
     retrieval_outcome = fetch_retrieval_context(
         query=clean_message,
         assistant=request.assistant.value,
@@ -103,7 +149,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         top_k=5,
     )
 
-    # 4. Route to specialist agent
+    # 6. Route to specialist agent
     result = agent_router.route_and_process(
         query=clean_message,
         assistant=request.assistant,

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from app.schemas.common import AssistantIdentifier, LanguageCode, Source
+from app.core.emergency_detector import check_clinical_emergency
 
 
 class BaseSpecialistAgent(ABC):
@@ -120,6 +121,11 @@ class BaseSpecialistAgent(ABC):
 
         # 3. Strict ground rule: Genuine empty evidence
         if not chunks:
+            # Deterministic clinical emergency guard: never direct an emergency to a Grama Sachivalayam
+            emergency_result = check_clinical_emergency(query, language)
+            if emergency_result:
+                return emergency_result
+
             if language == LanguageCode.TE:
                 answer = (
                     "ఈ ప్రశ్నకు సంబంధించి ధృవీకరించబడిన అధికారిక సమాచారం ప్రస్తుతం అందుబాటులో లేదు.\n"

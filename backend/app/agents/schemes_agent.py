@@ -1,6 +1,10 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from app.agents.base import BaseSpecialistAgent
 from app.schemas.common import AssistantIdentifier, LanguageCode
+from app.core.scheme_ambiguity_detector import (
+    is_ambiguous_scheme_query,
+    get_scheme_clarification_response,
+)
 
 
 class SchemesAgent(BaseSpecialistAgent):
@@ -49,3 +53,28 @@ class SchemesAgent(BaseSpecialistAgent):
             "Do you need the complete list of mandatory documents for this scheme?",
             "Would you like steps to submit and track your application via your Grama / Ward Sachivalayam?",
         ]
+
+    def process_query(
+        self,
+        query: str,
+        language: LanguageCode,
+        state: Optional[str] = None,
+        district: Optional[str] = None,
+        retrieved_chunks: Optional[List[Dict[str, Any]]] = None,
+        retrieval_outcome: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """
+        Processes schemes queries, prompting for clarification on ambiguous 'the scheme'
+        questions rather than concatenating unrelated schemes.
+        """
+        if is_ambiguous_scheme_query(query, language):
+            return get_scheme_clarification_response(language)
+
+        return super().process_query(
+            query=query,
+            language=language,
+            state=state,
+            district=district,
+            retrieved_chunks=retrieved_chunks,
+            retrieval_outcome=retrieval_outcome,
+        )
