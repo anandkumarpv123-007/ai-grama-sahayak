@@ -139,3 +139,138 @@ def test_format_evidence_text_helper():
     assert isinstance(evidence_text, str)
     assert "Evidence Chunk 1" in evidence_text
     assert "Thalliki Vandanam" in evidence_text
+
+
+# ==============================================================================
+# PHASE 4A REGRESSION TESTS: QUESTION-INTENT RELEVANCE (TELUGU & ENGLISH)
+# ==============================================================================
+
+def test_telugu_annadata_assistance_amount_ranking():
+    """
+    Regression Test: Telugu Annadata assistance query must rank chunk c1
+    (Financial Assistance & Payment Breakdown) at Rank 1 with prominent Rs. 20,000 evidence.
+    """
+    query = "అన్నదాత సుఖీభవ పథకం కింద రైతులకు ఎంత ఆర్థిక సహాయం అందుతుంది?"
+    results = retrieve_context(
+        query=query,
+        assistant="agriculture",
+        language="te",
+        top_k=5,
+    )
+    assert len(results) > 0
+    top_chunk = results[0]
+    assert top_chunk["metadata"]["chunk_id"] == "agri_annadata_sukhibhava_pmkisan_c1"
+    assert "Financial Assistance" in top_chunk["metadata"]["section_title"]
+    assert "20,000" in top_chunk["text"]
+    assert "Rs." in top_chunk["text"]
+    # Verify citations helper works and points to verified agriculture portal
+    citations = get_citations(results)
+    assert len(citations) >= 1
+    assert "annadathasukhibhava.ap.gov.in" in citations[0]["url"]
+
+
+def test_english_annadata_assistance_amount_ranking():
+    """
+    Regression Test: English Annadata assistance query must rank chunk c1 at Rank 1.
+    """
+    query = "What is the annual financial assistance for farmers under Annadata Sukhibhava?"
+    results = retrieve_context(
+        query=query,
+        assistant="agriculture",
+        language="en",
+        top_k=5,
+    )
+    assert len(results) > 0
+    top_chunk = results[0]
+    assert top_chunk["metadata"]["chunk_id"] == "agri_annadata_sukhibhava_pmkisan_c1"
+    assert "20,000" in top_chunk["text"]
+
+
+def test_telugu_and_english_eligibility_ranking():
+    """
+    Regression Test: Eligibility queries in Telugu and English must rank eligibility sections at Rank 1.
+    """
+    # Telugu Eligibility Query
+    te_query = "అన్నదాత సుఖీభవ పథకానికి ఎవరెవరు అర్హులు? అర్హత నిబంధనలు ఏమిటి?"
+    te_results = retrieve_context(
+        query=te_query,
+        assistant="agriculture",
+        language="te",
+        top_k=3,
+    )
+    assert len(te_results) > 0
+    assert te_results[0]["metadata"]["chunk_id"] == "agri_annadata_sukhibhava_pmkisan_c2"
+    assert "Eligibility" in te_results[0]["metadata"]["section_title"]
+
+    # English Eligibility Query
+    en_query = "What are the eligibility criteria and required attendance for Thalliki Vandanam?"
+    en_results = retrieve_context(
+        query=en_query,
+        assistant="education",
+        language="en",
+        top_k=3,
+    )
+    assert len(en_results) > 0
+    assert en_results[0]["metadata"]["chunk_id"] == "edu_thalliki_vandanam_scheme_c2"
+    assert "Eligibility" in en_results[0]["metadata"]["section_title"]
+    assert "75%" in en_results[0]["text"]
+
+
+def test_telugu_and_english_documents_ranking():
+    """
+    Regression Test: Required documents queries in Telugu and English must rank documents sections at Rank 1.
+    """
+    # Telugu Documents Query
+    te_query = "అన్నదాత సుఖీభవ దరఖాస్తుకు ఏయే పత్రాలు కావాలి?"
+    te_results = retrieve_context(
+        query=te_query,
+        assistant="agriculture",
+        language="te",
+        top_k=3,
+    )
+    assert len(te_results) > 0
+    assert te_results[0]["metadata"]["chunk_id"] == "agri_annadata_sukhibhava_pmkisan_c4"
+    assert "Required Documents" in te_results[0]["metadata"]["section_title"]
+
+    # English Documents Query
+    en_query = "What documents are required to apply for Kisan Credit Card?"
+    en_results = retrieve_context(
+        query=en_query,
+        assistant="agriculture",
+        language="en",
+        top_k=3,
+    )
+    assert len(en_results) > 0
+    assert en_results[0]["metadata"]["chunk_id"] == "agri_kisan_credit_card_c3"
+    assert "Required Documents" in en_results[0]["metadata"]["section_title"]
+
+
+def test_telugu_and_english_pension_amount_ranking():
+    """
+    Regression Test: Pension payout queries in Telugu and English must rank monthly payout chunks at Rank 1.
+    """
+    # Telugu Pension Amount Query
+    te_query = "ఎన్టీఆర్ భరోసా వృద్ధాప్య పింఛను మరియు దివ్యాంగుల పెన్షన్ ఎంత?"
+    te_results = retrieve_context(
+        query=te_query,
+        assistant="schemes",
+        language="te",
+        top_k=3,
+    )
+    assert len(te_results) > 0
+    assert te_results[0]["metadata"]["chunk_id"] == "schemes_ntr_bharosa_pension_c1"
+    assert "Payout Rates" in te_results[0]["metadata"]["section_title"]
+    assert "4,000" in te_results[0]["text"]
+    assert "6,000" in te_results[0]["text"]
+
+    # English Pension Amount Query
+    en_query = "What is the monthly pension amount under NTR Bharosa for old age and disabled?"
+    en_results = retrieve_context(
+        query=en_query,
+        assistant="schemes",
+        language="en",
+        top_k=3,
+    )
+    assert len(en_results) > 0
+    assert en_results[0]["metadata"]["chunk_id"] == "schemes_ntr_bharosa_pension_c1"
+    assert "4,000" in en_results[0]["text"]
