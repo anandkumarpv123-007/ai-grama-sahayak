@@ -401,3 +401,430 @@ def test_chat_existing_normal_agriculture_and_education_queries():
     assert "EMERGENCY MEDICAL ADVISORY" not in data_edu["answer"]
     assert "specify which scheme" not in data_edu["answer"].lower()
     assert data_edu["assistant"] == "education"
+
+
+def test_chat_ambiguous_scheme_required_documents_reproduction():
+    """
+    Exact reproduction query: 'What are the required documents for the scheme?'
+    Must trigger clarification rather than returning unrelated NTR Bharosa retrieval.
+    """
+    payload = {
+        "message": "What are the required documents for the scheme?",
+        "assistant": "schemes",
+        "language": "en",
+    }
+    res = client.post("/api/chat", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert "specify which scheme" in data["answer"].lower() or "which scheme or sector" in data["answer"].lower()
+    assert data["sources"] == []
+    assert data["needs_follow_up"] is True
+    assert "NTR Bharosa" in data["answer"]
+    assert "Annadata Sukhibhava – PM KISAN" in data["answer"]
+    assert "Dr. NTR Vaidya Seva" in data["answer"]
+    assert "Thalliki Vandanam" in data["answer"]
+    # Must NOT have returned chunks or retrieval from NTR Bharosa
+    assert "[1. Overview and Scheme Purpose (పథక నేపథ్యం మరియు లక్ష్యం)]" not in data["answer"]
+
+
+def test_chat_ambiguous_scheme_telugu_required_documents():
+    """
+    Telugu required documents query for unspecified scheme:
+    'ఆ పథకానికి అవసరమైన పత్రాలు ఏమిటి?'
+    """
+    payload = {
+        "message": "ఆ పథకానికి అవసరమైన పత్రాలు ఏమిటి?",
+        "assistant": "schemes",
+        "language": "te",
+    }
+    res = client.post("/api/chat", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert "స్పష్టం చేయగలరా" in data["answer"] or "ఏ పథకం గురించి" in data["answer"]
+    assert data["sources"] == []
+    assert data["needs_follow_up"] is True
+    assert "ఎన్టీఆర్ భరోసా" in data["answer"]
+    assert "అన్నదాత సుఖీభవ" in data["answer"]
+    assert "డా. ఎన్టీఆర్ వైద్య సేవ" in data["answer"]
+    assert "తల్లికి వందనం" in data["answer"]
+
+
+def test_chat_ambiguous_scheme_long_queries_en_and_te():
+    """
+    Long queries (well over 6-8 words) must trigger clarification without getting
+    blocked by arbitrary word-count ceilings.
+    """
+    # English long query (17 words)
+    payload_en = {
+        "message": "Can you please explain all the eligibility criteria, documentation, and application steps for the government scheme?",
+        "assistant": "schemes",
+        "language": "en",
+    }
+    res_en = client.post("/api/chat", json=payload_en)
+    assert res_en.status_code == 200
+    data_en = res_en.json()
+    assert "specify which scheme" in data_en["answer"].lower()
+    assert data_en["sources"] == []
+    assert data_en["needs_follow_up"] is True
+
+    # Telugu long query (13 words)
+    payload_te = {
+        "message": "ఆంధ్రప్రదేశ్ ప్రభుత్వ సంక్షేమ పథకానికి దరఖాస్తు చేసుకోవడానికి కావలసిన ముఖ్యమైన పత్రాలు మరియు అర్హతలు ఏమిటి?",
+        "assistant": "schemes",
+        "language": "te",
+    }
+    res_te = client.post("/api/chat", json=payload_te)
+    assert res_te.status_code == 200
+    data_te = res_te.json()
+    assert "స్పష్టం చేయగలరా" in data_te["answer"]
+    assert data_te["sources"] == []
+    assert data_te["needs_follow_up"] is True
+
+
+def test_chat_ambiguous_scheme_short_phrases_en_and_te():
+    """
+    Short queries (1-3 words) must trigger clarification.
+    """
+    for phrase in ["scheme documents", "the scheme", "government schemes", "welfare schemes"]:
+        res = client.post("/api/chat", json={"message": phrase, "assistant": "schemes", "language": "en"})
+        assert res.status_code == 200
+        data = res.json()
+        assert "specify which scheme" in data["answer"].lower()
+        assert data["sources"] == []
+
+    for phrase in ["పథకం పత్రాలు", "పథకం", "ప్రభుత్వ పథకాలు", "సంక్షేమ పథకాలు"]:
+        res = client.post("/api/chat", json={"message": phrase, "assistant": "schemes", "language": "te"})
+        assert res.status_code == 200
+        data = res.json()
+        assert "స్పష్టం చేయగలరా" in data["answer"]
+        assert data["sources"] == []
+
+
+def test_chat_specific_named_schemes_not_treated_as_ambiguous():
+    """
+    Specific named schemes (even if phrased with 'documents', 'scheme', or 'eligibility')
+    must proceed to retrieval and NOT return clarification.
+    """
+    # 1. Annadata Sukhibhava
+    res1 = client.post(
+        "/api/chat",
+        json={
+            "message": "What are the required documents for Annadata Sukhibhava?",
+            "assistant": "agriculture",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Kakinada",
+        },
+    )
+    assert res1.status_code == 200
+    data1 = res1.json()
+    assert "specify which scheme" not in data1["answer"].lower()
+    assert data1["assistant"] == "agriculture"
+
+    # 2. Dr NTR Vaidya Seva
+    res2 = client.post(
+        "/api/chat",
+        json={
+            "message": "What are the required documents for Dr NTR Vaidya Seva scheme?",
+            "assistant": "healthcare",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Visakhapatnam",
+        },
+    )
+    assert res2.status_code == 200
+    data2 = res2.json()
+    assert "specify which scheme" not in data2["answer"].lower()
+    assert data2["assistant"] == "healthcare"
+
+    # 3. Thalliki Vandanam
+    res3 = client.post(
+        "/api/chat",
+        json={
+            "message": "What are the required documents for Thalliki Vandanam?",
+            "assistant": "education",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Guntur",
+        },
+    )
+    assert res3.status_code == 200
+    data3 = res3.json()
+    assert "specify which scheme" not in data3["answer"].lower()
+    assert data3["assistant"] == "education"
+
+    # 4. NTR Bharosa Pension (Telugu)
+    res4 = client.post(
+        "/api/chat",
+        json={
+            "message": "ఎన్టీఆర్ భరోసా పింఛను పథకానికి ఏ పత్రాలు కావాలి?",
+            "assistant": "schemes",
+            "language": "te",
+            "state": "Andhra Pradesh",
+            "district": "Krishna",
+        },
+    )
+    assert res4.status_code == 200
+    data4 = res4.json()
+    assert "స్పష్టం చేయగలరా" not in data4["answer"]
+    assert data4["assistant"] == "schemes"
+
+    # 5. Grama Sachivalayam
+    res5 = client.post(
+        "/api/chat",
+        json={
+            "message": "What citizen services are delivered at Grama Ward Sachivalayam within 72 hours?",
+            "assistant": "schemes",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Krishna",
+        },
+    )
+    assert res5.status_code == 200
+    data5 = res5.json()
+    assert "specify which scheme" not in data5["answer"].lower()
+    assert data5["assistant"] == "schemes"
+
+
+def test_chat_ordinary_domain_queries_not_treated_as_ambiguous():
+    """
+    Ordinary agriculture, education, and healthcare questions must never be treated
+    as ambiguous scheme questions.
+    """
+    # Agriculture
+    res_agri = client.post(
+        "/api/chat",
+        json={
+            "message": "How do I manage stem borer pest in paddy crop during kharif season?",
+            "assistant": "agriculture",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Kakinada",
+        },
+    )
+    assert res_agri.status_code == 200
+    assert "specify which scheme" not in res_agri.json()["answer"].lower()
+
+    # Healthcare
+    res_health = client.post(
+        "/api/chat",
+        json={
+            "message": "What are the symptoms and home precautions for seasonal dengue fever?",
+            "assistant": "healthcare",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Visakhapatnam",
+        },
+    )
+    assert res_health.status_code == 200
+    assert "specify which scheme" not in res_health.json()["answer"].lower()
+
+    # Education
+    res_edu = client.post(
+        "/api/chat",
+        json={
+            "message": "When do government high school admissions begin in Andhra Pradesh?",
+            "assistant": "education",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Guntur",
+        },
+    )
+    assert res_edu.status_code == 200
+    assert "specify which scheme" not in res_edu.json()["answer"].lower()
+
+    # Telugu Agriculture
+    res_te_agri = client.post(
+        "/api/chat",
+        json={
+            "message": "వరి పంటలో తెగుళ్ళ నివారణకు ఎలాంటి మందులు వాడాలి?",
+            "assistant": "agriculture",
+            "language": "te",
+            "state": "Andhra Pradesh",
+            "district": "Kakinada",
+        },
+    )
+    assert res_te_agri.status_code == 200
+    assert "స్పష్టం చేయగలరా" not in res_te_agri.json()["answer"]
+
+
+def test_chat_emergency_priority_over_ambiguity():
+    """
+    Clinical emergencies must ALWAYS take priority over scheme ambiguity detection,
+    even if the user query contains words like 'scheme' or 'assistance'.
+    """
+    payload = {
+        "message": "I have severe chest pain and difficulty breathing, which government scheme covers emergency ambulance?",
+        "assistant": "healthcare",
+        "language": "en",
+    }
+    res = client.post("/api/chat", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    # Must be emergency advisory, NOT scheme clarification
+    assert "108" in data["answer"]
+    assert "EMERGENCY MEDICAL ADVISORY" in data["answer"]
+    assert "specify which scheme" not in data["answer"].lower()
+    assert "Sachivalayam" not in data["answer"]
+    assert data["sources"] == []
+
+
+def test_chat_broad_category_unnamed_singular_insurance_scheme():
+    """
+    Case 2: 'What documents are required for the insurance scheme?'
+    'insurance' is a broad category spanning multiple sectors (crop insurance, health insurance,
+    life insurance). Asking about 'the insurance scheme' without naming one is an unnamed
+    singular scheme that MUST NOT be assigned an arbitrary scheme like NTR Bharosa Pension.
+    """
+    payload = {
+        "message": "What documents are required for the insurance scheme?",
+        "assistant": "schemes",
+        "language": "en",
+        "state": "Andhra Pradesh",
+        "district": "Krishna",
+    }
+    res = client.post("/api/chat", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert "specify which scheme" in data["answer"].lower()
+    assert data["sources"] == []
+    assert data["needs_follow_up"] is True
+    # Must NOT return NTR Bharosa Pension
+    assert "NTR Bharosa Pension Scheme" not in data["answer"] or "specify which scheme" in data["answer"].lower()
+
+
+def test_chat_broad_category_scheme_discovery_housing_and_scholarships():
+    """
+    Scheme discovery questions may list relevant options with supporting evidence
+    rather than always asking for clarification.
+    Case 1: 'Which government housing scheme am I eligible for?'
+    Case 3: 'Which scholarship schemes are available for students?'
+    Case 7: 'నాకు ఏ గృహ నిర్మాణ పథకం వర్తిస్తుంది?'
+    Case 8: 'ఏ విద్యార్థి స్కాలర్షిప్ పథకాలు అందుబాటులో ఉన్నాయి?'
+    """
+    # Case 1: Housing discovery in English
+    res1 = client.post(
+        "/api/chat",
+        json={
+            "message": "Which government housing scheme am I eligible for?",
+            "assistant": "schemes",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Krishna",
+        },
+    )
+    assert res1.status_code == 200
+    data1 = res1.json()
+    assert "specify which scheme" not in data1["answer"].lower()
+    assert len(data1["sources"]) > 0
+    assert any("Pedalandariki Illu" in s["title"] for s in data1["sources"])
+
+    # Case 3: Scholarship discovery in English
+    res3 = client.post(
+        "/api/chat",
+        json={
+            "message": "Which scholarship schemes are available for students?",
+            "assistant": "education",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Guntur",
+        },
+    )
+    assert res3.status_code == 200
+    data3 = res3.json()
+    assert "specify which scheme" not in data3["answer"].lower()
+    assert len(data3["sources"]) > 0
+
+    # Case 7: Housing discovery in Telugu
+    res7 = client.post(
+        "/api/chat",
+        json={
+            "message": "నాకు ఏ గృహ నిర్మాణ పథకం వర్తిస్తుంది?",
+            "assistant": "schemes",
+            "language": "te",
+            "state": "Andhra Pradesh",
+            "district": "Krishna",
+        },
+    )
+    assert res7.status_code == 200
+    data7 = res7.json()
+    assert "స్పష్టం చేయగలరా" not in data7["answer"]
+    assert len(data7["sources"]) > 0
+
+    # Case 8: Scholarship discovery in Telugu
+    res8 = client.post(
+        "/api/chat",
+        json={
+            "message": "ఏ విద్యార్థి స్కాలర్షిప్ పథకాలు అందుబాటులో ఉన్నాయి?",
+            "assistant": "education",
+            "language": "te",
+            "state": "Andhra Pradesh",
+            "district": "Guntur",
+        },
+    )
+    assert res8.status_code == 200
+    data8 = res8.json()
+    assert "స్పష్టం చేయగలరా" not in data8["answer"]
+    assert len(data8["sources"]) > 0
+
+
+def test_chat_broad_category_pension_and_named_schemes():
+    """
+    Case 4: 'Tell me about the pension scheme.'
+    Case 5: 'What documents are required for NTR Bharosa Pension Scheme?'
+    Case 6: 'What are the benefits of Annadata Sukhibhava?'
+    """
+    # Case 4: Pension scheme inquiry (NTR Bharosa is the verified AP state pension scheme)
+    res4 = client.post(
+        "/api/chat",
+        json={
+            "message": "Tell me about the pension scheme.",
+            "assistant": "schemes",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Krishna",
+        },
+    )
+    assert res4.status_code == 200
+    data4 = res4.json()
+    assert "specify which scheme" not in data4["answer"].lower()
+    assert len(data4["sources"]) > 0
+    assert any("NTR Bharosa" in s["title"] for s in data4["sources"])
+
+    # Case 5: Named NTR Bharosa Pension Scheme
+    res5 = client.post(
+        "/api/chat",
+        json={
+            "message": "What documents are required for NTR Bharosa Pension Scheme?",
+            "assistant": "schemes",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Krishna",
+        },
+    )
+    assert res5.status_code == 200
+    data5 = res5.json()
+    assert "specify which scheme" not in data5["answer"].lower()
+    assert len(data5["sources"]) > 0
+    assert any("NTR Bharosa" in s["title"] for s in data5["sources"])
+
+    # Case 6: Named Annadata Sukhibhava
+    res6 = client.post(
+        "/api/chat",
+        json={
+            "message": "What are the benefits of Annadata Sukhibhava?",
+            "assistant": "agriculture",
+            "language": "en",
+            "state": "Andhra Pradesh",
+            "district": "Kakinada",
+        },
+    )
+    assert res6.status_code == 200
+    data6 = res6.json()
+    assert "specify which scheme" not in data6["answer"].lower()
+    assert len(data6["sources"]) > 0
+    assert any("Annadata Sukhibhava" in s["title"] for s in data6["sources"])
