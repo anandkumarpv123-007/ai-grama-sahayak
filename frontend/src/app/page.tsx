@@ -8,12 +8,24 @@ import {
   ApiException,
 } from "../services/api";
 import { getSupportedMimeType, formatDuration } from "../services/voiceUtils";
+import {
+  ConnectivityState,
+  subscribeConnectivity,
+  probeBackendHealth,
+} from "../services/connectivity";
+import { findOfflinePublicInfo } from "../services/offlineKnowledge";
+import {
+  SavedQuestion,
+  getSavedQuestions,
+  saveQuestionForLater,
+} from "../services/savedQuestions";
 import DocumentAnalysis from "../components/DocumentAnalysis";
 import NearbyServices from "../components/NearbyServices";
 import GrievanceDrafting from "../components/GrievanceDrafting";
 import AudioSpeakButton from "../components/AudioSpeakButton";
 import SchemeEligibility from "../components/SchemeEligibility";
 import SafeMarkdown from "../components/SafeMarkdown";
+import LowNetworkBanner from "../components/LowNetworkBanner";
 
 type SpeechRecognitionAlternativeLike = {
   transcript: string;
@@ -58,6 +70,7 @@ type ChatMessage = {
   safetyNotice?: string | null;
   followUps?: string[];
   isError?: boolean;
+  isCached?: boolean;
 };
 
 interface SpecialistAssistant {
@@ -195,6 +208,18 @@ export default function Home() {
   const [isThinking, setIsThinking] = useState(false);
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
 
+  // Connectivity and Saved Questions State (Tasks 1, 2, 3)
+  const [connectivity, setConnectivity] = useState<ConnectivityState>({
+    status: "online",
+    isBrowserOnline: true,
+    isBackendReachable: true,
+    lastChecked: new Date().toISOString(),
+  });
+  const [savedQuestions, setSavedQuestions] = useState<SavedQuestion[]>(() => {
+    return getSavedQuestions();
+  });
+  const [savedActionToast, setSavedActionToast] = useState<string | null>(null);
+
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -210,6 +235,35 @@ export default function Home() {
   const conversationIdRef = useRef<string | null>(null);
   const lastFailedMessageRef = useRef<string | null>(null);
   const messageIdCounterRef = useRef(1);
+
+  const refreshSavedQuestions = useCallback(() => {
+    setSavedQuestions(getSavedQuestions());
+  }, []);
+
+  // Initialize Connectivity subscription, health probe, and Service Worker
+  useEffect(() => {
+    const unsubscribe = subscribeConnectivity((state) => {
+      setConnectivity(state);
+    });
+
+    // Initial probe and periodic 25s probe
+    probeBackendHealth();
+    const interval = setInterval(() => {
+      probeBackendHealth();
+    }, 25000);
+
+    // Register Service Worker for offline shell caching (Task 2)
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {
+        // Ignored if service worker is unsupported or restricted
+      });
+    }
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
+  }, [refreshSavedQuestions]);
 
   // Automatically scroll to the latest chat content
   useEffect(() => {
@@ -393,8 +447,18 @@ export default function Home() {
     setVoiceMessage(isTe ? "వాయిస్ రికార్డింగ్ రద్దు చేయబడింది." : "Voice recording cancelled.");
   };
 
-  // Main voice input handler
+  // Main voice input handler (Task 4: Graceful Degradation)
   const startVoiceInput = async () => {
+    if (connectivity.status === "offline") {
+      setRecordingState("error");
+      setVoiceMessage(
+        isTe
+          ? "లైవ్ వాయిస్ రికార్డింగ్ మరియు ట్రాన్స్‌క్రిప్షన్ కొరకు ఇంటర్నెట్ అవసరం. దయచేసి టైప్ చేయండి లేదా తర్వాత అడగడానికి సేవ్ చేయండి."
+          : "Voice transcription requires an active internet connection. Please type your query or save it for later."
+      );
+      return;
+    }
+
     if (recordingState === "recording") {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         mediaRecorderRef.current.stop();
@@ -583,7 +647,6 @@ export default function Home() {
     startBrowserSpeechRecognitionFallback();
   };
 
-  // Map active assistant id
   const getAssistantId = (): "agriculture" | "healthcare" | "education" | "schemes" => {
     const match = SPECIALIST_ASSISTANTS.find(
       (c) => c.id === selectedCategory || c.title === selectedCategory
@@ -595,6 +658,7 @@ export default function Home() {
     SPECIALIST_ASSISTANTS.find((a) => a.id === selectedCategory || a.title === selectedCategory) ||
     SPECIALIST_ASSISTANTS[0];
 
+  // Chat Submission Handler (Task 2 & Task 4: Offline Public Knowledge Match & Saved Queue)
   const handleSendMessage = async (textToSend?: string) => {
     const rawQuestion = textToSend || question;
     const trimmedQuestion = rawQuestion.trim();
@@ -617,9 +681,55 @@ export default function Home() {
     setMessages((prev) => [...prev, userMessage]);
     setQuestion("");
     setVoiceMessage("");
-    setIsThinking(true);
     setBackendNotice(null);
     lastFailedMessageRef.current = null;
+
+    // Check low-network or offline state
+    const isNetworkUnavailable =
+      connectivity.status === "offline" || connectivity.status === "backend_unreachable";
+
+    if (isNetworkUnavailable) {
+      setIsThinking(true);
+      setTimeout(() => {
+        setIsThinking(false);
+
+        // Check if question matches verified cached public knowledge
+        const offlineMatch = findOfflinePublicInfo(trimmedQuestion);
+
+        if (offlineMatch) {
+          const cachedMarkdown = isTe
+            ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 నిల్వ తేదీ: ${offlineMatch.lastUpdated} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ మార్గదర్శకాలు మారవచ్చు. నెట్‌వర్క్ పునరుద్ధరించబడిన తర్వాత గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
+            : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Cached: ${offlineMatch.lastUpdated} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government rules may change. Confirm live eligibility once connection is restored).*`;
+
+          const cachedAssistantMsg: ChatMessage = {
+            id: messageIdCounterRef.current++,
+            sender: "assistant",
+            text: cachedMarkdown,
+            isCached: true,
+            safetyNotice: isTe
+              ? "ఇది ఆఫ్‌లైన్ నిల్వ నుండి అందించబడిన ప్రాథమిక సమాచారం మాత్రమే."
+              : "This preliminary advice was served safely from your local offline cache.",
+          };
+          setMessages((prev) => [...prev, cachedAssistantMsg]);
+        } else {
+          lastFailedMessageRef.current = trimmedQuestion;
+          const offlineFallbackText = isTe
+            ? `📡 **నెట్‌వర్క్ అందుబాటులో లేదు (Offline Mode)**\n\nక్షమించండి, మీ ప్రశ్నకు ప్రత్యక్ష సమాధానం ఇవ్వడానికి లైవ్ సర్వరుతో అనుసంధానం అవసరం. మీరు ఈ ప్రశ్నను సేవ్ చేసుకోవచ్చు; ఇంటర్నెట్ పునరుద్ధరించబడినప్పుడు ఒక్క క్లిక్‌తో సమర్పించవచ్చు.\n\n*అత్యవసర ఆరోగ్య సలహాల కొరకు 104 లేదా 108 కు నేరుగా కాల్ చేయవచ్చు.*`
+            : `📡 **Network Connection Unavailable**\n\nLive answers require an active server connection. You can save this question to submit manually once connectivity is restored.\n\n*For immediate emergency medical advice, dial 104 or 108 toll-free without internet.*`;
+
+          const fallbackMsg: ChatMessage = {
+            id: messageIdCounterRef.current++,
+            sender: "assistant",
+            text: offlineFallbackText,
+            isError: true,
+          };
+          setMessages((prev) => [...prev, fallbackMsg]);
+        }
+      }, 250);
+      return;
+    }
+
+    setIsThinking(true);
 
     try {
       const response = await sendChatMessage(
@@ -637,6 +747,33 @@ export default function Home() {
 
       if (response.conversation_id) {
         conversationIdRef.current = response.conversation_id;
+      }
+
+      // Check if backend returned empty sources or fallback answer, and if offline public cache has verified info
+      const isFallbackAnswer =
+        (!response.sources || response.sources.length === 0) &&
+        (response.answer.includes("ధృవీకరించబడిన అధికారిక సమాచారం ప్రస్తుతం అందుబాటులో లేదు") ||
+          response.answer.includes("No verified official information") ||
+          response.answer.includes("అందుబాటులో లేదు"));
+
+      const offlineMatch = findOfflinePublicInfo(trimmedQuestion);
+
+      if (isFallbackAnswer && offlineMatch) {
+        const cachedMarkdown = isTe
+          ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\nలైవ్ సర్వర్‌లో నిర్దిష్ట వివరాలు లేనందున, ధృవీకరించబడిన ప్రజా సమాచార నిల్వ నుండి వివరాలు అందించబడుతున్నాయి:\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 నిల్వ తేదీ: ${offlineMatch.lastUpdated} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ సంక్షేమ మార్గదర్శకాలు మారవచ్చు. స్థానిక గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
+          : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\nServing from verified public cache as live search returned no direct match:\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Cached: ${offlineMatch.lastUpdated} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government guidelines may vary. Confirm with local Grama Sachivalayam).*`;
+
+        const cachedAssistantMsg: ChatMessage = {
+          id: messageIdCounterRef.current++,
+          sender: "assistant",
+          text: cachedMarkdown,
+          isCached: true,
+          safetyNotice: isTe
+            ? "ఇది ధృవీకరించబడిన ప్రజా నిల్వ నుండి అందించబడిన ప్రాథమిక సమాచారం."
+            : "Served safely from verified public cache as fallback.",
+        };
+        setMessages((prev) => [...prev, cachedAssistantMsg]);
+        return;
       }
 
       const assistantMessage: ChatMessage = {
@@ -665,12 +802,31 @@ export default function Home() {
 
       setBackendNotice(errorNotice);
 
+      const offlineMatch = findOfflinePublicInfo(trimmedQuestion);
+      if (offlineMatch) {
+        const cachedMarkdown = isTe
+          ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\nసర్వర్ అనుసంధాన లోపం ఏర్పడినందున, స్థానిక ధృవీకరించబడిన ప్రజా నిల్వ నుండి సమాచారం అందించబడుతోంది:\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 నిల్వ తేదీ: ${offlineMatch.lastUpdated} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ మార్గదర్శకాలు మారవచ్చు. స్థానిక గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
+          : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\nServer temporarily unreachable; served safely from verified offline public cache:\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Cached: ${offlineMatch.lastUpdated} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government guidelines may vary. Confirm with local Grama Sachivalayam).*`;
+
+        const cachedAssistantMsg: ChatMessage = {
+          id: messageIdCounterRef.current++,
+          sender: "assistant",
+          text: cachedMarkdown,
+          isCached: true,
+          safetyNotice: isTe
+            ? "ఇది ధృవీకరించబడిన ప్రజా నిల్వ నుండి అందించబడిన ప్రాథమిక సమాచారం."
+            : "Served safely from verified offline public cache.",
+        };
+        setMessages((prev) => [...prev, cachedAssistantMsg]);
+        return;
+      }
+
       const unavailableMessage: ChatMessage = {
         id: messageIdCounterRef.current++,
         sender: "assistant",
         text: isTe
-          ? "క్షమించండి, గ్రామ సహాయక్ చాట్ సర్వీస్ ప్రస్తుతం అందుబాటులో లేదు. దయచేసి కాసేపటి తర్వాత 'మళ్ళీ ప్రయత్నించండి' బటన్ నొక్కండి."
-          : "The Grama Sahayak chat service is currently unavailable. Please try again in a moment using the Retry button.",
+          ? "క్షమించండి, గ్రామ సహాయక్ చాట్ సర్వీస్ ప్రస్తుతం అందుబాటులో లేదు. దయచేసి కాసేపటి తర్వాత 'మళ్ళీ ప్రయత్నించండి' బటన్ నొక్కండి, లేదా ఈ ప్రశ్నను తర్వాత కోసం సేవ్ చేయండి."
+          : "The Grama Sahayak chat service is currently unavailable. Please try again in a moment using the Retry button, or save this question for later.",
         isError: true,
       };
 
@@ -702,6 +858,22 @@ export default function Home() {
     }
   };
 
+  const handleSaveCurrentQuestion = (textToSave?: string) => {
+    const target = textToSave || question || lastFailedMessageRef.current;
+    if (!target || !target.trim()) return;
+
+    const res = saveQuestionForLater(target, getAssistantId(), language);
+    if (res.success) {
+      setSavedActionToast(isTe ? "ప్రశ్న సేవ్ చేయబడింది! ✓" : "Question saved for later! ✓");
+      refreshSavedQuestions();
+      setQuestion("");
+      setTimeout(() => setSavedActionToast(null), 3000);
+    } else {
+      setSavedActionToast(res.message || "Could not save question");
+      setTimeout(() => setSavedActionToast(null), 3000);
+    }
+  };
+
   return (
     <main className="home-container">
       {/* Credible Civic Platform Header */}
@@ -726,6 +898,18 @@ export default function Home() {
         </div>
 
         <div className="header-actions">
+          {/* Low-Network Assistance Pill & Drawer (Tasks 1, 2, 3, 5) */}
+          <LowNetworkBanner
+            language={language}
+            connectivity={connectivity}
+            savedQuestions={savedQuestions}
+            onRefreshSavedQuestions={refreshSavedQuestions}
+            onSubmitSavedQuestion={(text, cat) => {
+              setSelectedCategory(cat);
+              handleSendMessage(text);
+            }}
+          />
+
           <label htmlFor="language-selector" className="sr-only">
             {isTe ? "భాష ఎంచుకోండి" : "Select language"}
           </label>
@@ -784,13 +968,19 @@ export default function Home() {
       </nav>
 
       {/* View: Document Analysis */}
-      {activeTab === "documents" && <DocumentAnalysis language={language} />}
+      {activeTab === "documents" && (
+        <DocumentAnalysis language={language} isOffline={connectivity.status !== "online"} />
+      )}
 
       {/* View: Nearby Services */}
-      {activeTab === "services" && <NearbyServices language={language} />}
+      {activeTab === "services" && (
+        <NearbyServices language={language} isOffline={connectivity.status !== "online"} />
+      )}
 
       {/* View: Grievances */}
-      {activeTab === "grievances" && <GrievanceDrafting language={language} />}
+      {activeTab === "grievances" && (
+        <GrievanceDrafting language={language} isOffline={connectivity.status !== "online"} />
+      )}
 
       {/* View: Chat (Default Citizen Experience) */}
       {activeTab === "chat" && (
@@ -1007,7 +1197,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* Suggested Citizen Questions (Task 2) */}
+            {/* Suggested Citizen Questions */}
             <div className="suggested-questions-panel">
               <div className="suggested-title-row">
                 <span className="sparkle-icon">💡</span>
@@ -1077,7 +1267,7 @@ export default function Home() {
                           : isTe ? "గ్రామ సహాయక్" : "Grama Sahayak"}
                       </span>
 
-                      {/* Safe Markdown formatting (Task 3) */}
+                      {/* Safe Markdown formatting */}
                       {message.sender === "assistant" ? (
                         <SafeMarkdown content={message.text} />
                       ) : (
@@ -1154,11 +1344,20 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Retry Button on Error */}
+                      {/* Error or Offline Actions: Retry & Save for Later */}
                       {message.isError && (
-                        <button type="button" className="retry-button" onClick={handleRetry}>
-                          ↻ {isTe ? "మళ్లీ ప్రయత్నించండి" : "Retry"}
-                        </button>
+                        <div className="msg-action-row">
+                          <button type="button" className="retry-button" onClick={handleRetry}>
+                            ↻ {isTe ? "మళ్లీ ప్రయత్నించండి" : "Retry Live"}
+                          </button>
+                          <button
+                            type="button"
+                            className="save-question-chip-btn"
+                            onClick={() => handleSaveCurrentQuestion()}
+                          >
+                            💾 {isTe ? "ప్రశ్నను సేవ్ చేయండి" : "Save for Later"}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1198,6 +1397,13 @@ export default function Home() {
 
           {/* Bottom Question Input Bar */}
           <section className="question-section">
+            {savedActionToast && (
+              <div className="saved-toast-notification" role="status">
+                <span>✓</span>
+                <span>{savedActionToast}</span>
+              </div>
+            )}
+
             <div className="question-box">
               <div className="question-icon" aria-hidden="true">💬</div>
 
@@ -1211,12 +1417,28 @@ export default function Home() {
                   }
                 }}
                 placeholder={
-                  isTe
+                  connectivity.status !== "online"
+                    ? isTe
+                      ? "నెట్‌వర్క్ లేదు — ప్రశ్నను టైప్ చేసి సేవ్ చేయండి లేదా శోధించండి..."
+                      : "Offline — Type question to search cached info or save..."
+                    : isTe
                     ? `మీ ప్రశ్నను ఇక్కడ అడగండి (${currentAssistant.titleTe})...`
                     : `Ask your question here (${currentAssistant.titleEn})...`
                 }
                 aria-label={isTe ? "మీ ప్రశ్నను నమోదు చేయండి" : "Type your question"}
               />
+
+              {/* Allow saving question for later anytime (offline or planning ahead) */}
+              {question.trim() && (
+                <button
+                  type="button"
+                  className="save-input-btn"
+                  onClick={() => handleSaveCurrentQuestion()}
+                  title={isTe ? "ఈ ప్రశ్నను తర్వాత అడగడానికి సేవ్ చేయండి" : "Save this question for later"}
+                >
+                  💾 {isTe ? "సేవ్" : "Save"}
+                </button>
+              )}
 
               <button
                 type="button"
@@ -1236,8 +1458,8 @@ export default function Home() {
               </span>
               <p className="question-hint">
                 {isTe
-                  ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు, లేదా పైనున్న మైక్రోఫోన్ ద్వారా మాట్లాడవచ్చు."
-                  : "You can type in Telugu or English, or use the microphone button above to speak."}
+                  ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు. నెట్‌వర్క్ లేనప్పుడు ప్రశ్నలను తర్వాత కోసం సేవ్ చేసుకోవచ్చు."
+                  : "You can type in Telugu or English. When offline, save questions to submit when connected."}
               </p>
             </div>
           </section>

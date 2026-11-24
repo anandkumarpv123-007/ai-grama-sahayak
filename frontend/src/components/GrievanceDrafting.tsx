@@ -5,6 +5,7 @@ import { draftGrievance, GrievanceDraftResponse, ApiException } from "../service
 
 interface GrievanceDraftingProps {
   language: string;
+  isOffline?: boolean;
 }
 
 const GRIEVANCE_CATEGORIES = [
@@ -17,7 +18,7 @@ const GRIEVANCE_CATEGORIES = [
   { id: "other", labelEn: "Other Citizen Public Grievances", labelTe: "ఇతర ప్రజా సమస్యలు / ఫిర్యాదులు" },
 ];
 
-export default function GrievanceDrafting({ language }: GrievanceDraftingProps) {
+export default function GrievanceDrafting({ language, isOffline }: GrievanceDraftingProps) {
   const isTe = language === "Telugu";
 
   const [category, setCategory] = useState<string>("water_supply");
@@ -64,6 +65,44 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
     setIsLoading(true);
     setError(null);
     setCopied(false);
+
+    if (isOffline) {
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsLoading(false);
+        const localSubject =
+          draftLang === "te"
+            ? `${district} జిల్లా, ${mandal} గ్రామంలో సమస్య పరిష్కారం కొరకు ప్రజా వినతి`
+            : `Petition regarding public grievance in ${mandal}, ${district} District`;
+        const localBody =
+          draftLang === "te"
+            ? `గౌరవనీయులైన ప్రజా ఫిర్యాదుల పరిష్కార అధికారి / గ్రామ సచివాలయ అధికారి గారికి,\n\nవిషయం: ${district} జిల్లా, ${mandal} పరిధిలో సమస్య పరిష్కారం కొరకు దరఖాస్తు.\n\nసమస్య వివరాలు:\n${description.trim()}\n\nపై సమస్య వలన స్థానిక ప్రజలు తీవ్ర ఇబ్బందులు ఎదుర్కొంటున్నారు. కావున సంబంధిత అధికారులు తక్షణమే క్షేత్రస్థాయి పరిశీలన జరిపి తగిన చర్యలు తీసుకోవలసిందిగా కోరుతున్నాము.\n\nభవదీయుడు,\nగ్రామ పౌరుడు / దరఖాస్తుదారు\nగ్రామం: ${mandal}\nజిల్లా: ${district}`
+            : `To the Public Grievance Redressal Officer / Grama Sachivalayam Officer,\n\nSubject: Formal petition regarding public grievance in ${mandal}, ${district} District.\n\nIssue Details:\n${description.trim()}\n\nThe aforementioned issue is causing significant hardship to local citizens. We earnestly request prompt field inspection and redressal from the competent authorities.\n\nSincerely,\nCitizen Applicant\nVillage: ${mandal}\nDistrict: ${district}`;
+
+        setDraftResult({
+          subject: localSubject,
+          complaint_body: localBody,
+          recommended_next_steps:
+            draftLang === "te"
+              ? [
+                  "ఈ ముసాయిదాను కాపీ చేసుకుని గ్రామ/వార్డు సచివాలయంలో సమర్పించండి.",
+                  "మీ దరఖాస్తుకు రసీదు లేదా గ్రీవెన్స్ ఐడీ నంబర్ తీసుకోండి.",
+                  "ఇంటర్నెట్ వచ్చినప్పుడు నేరుగా స్పందన (Spandana) పోర్టల్‌లో కూడా నమోదు చేయవచ్చు.",
+                ]
+              : [
+                  "Copy this petition and submit at your local Grama Sachivalayam.",
+                  "Obtain a formal grievance acknowledgment receipt.",
+                  "You can also submit via the Spandana portal once connection is restored.",
+                ],
+          official_links: [
+            "https://spandana.ap.gov.in",
+            "https://gramawardsachivalayam.ap.gov.in",
+          ],
+        });
+        setEditableBody(localBody);
+      }, 250);
+      return;
+    }
 
     try {
       const response = await draftGrievance({
