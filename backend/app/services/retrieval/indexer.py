@@ -10,6 +10,7 @@ import re
 from collections import Counter
 from typing import Any, Dict, List, Optional, Set
 from app.services.retrieval.models import RetrievedChunk
+from app.services.retrieval.scheme_registry import detect_named_schemes
 
 
 class MultilingualTokenizer:
@@ -74,6 +75,12 @@ class MultilingualTokenizer:
         "ఫీజు": ["fee", "tuition", "rtf", "reimbursement"],
         "వసతి": ["hostel", "accommodation", "maintenance", "mtf", "vasathi"],
         "దీవెన": ["deevena", "vidya", "vasathi", "scholarship"],
+        "స్కాలర్షిప్": ["scholarship", "scholarships", "post-matric", "rtf", "mtf", "vidya", "deevena"],
+        "స్కాలర్‌షిప్": ["scholarship", "scholarships", "post-matric", "rtf", "mtf", "vidya", "deevena"],
+        "స్కాలర్షిప్స్": ["scholarship", "scholarships", "post-matric", "rtf", "mtf", "vidya", "deevena"],
+        "స్కాలర్‌షిప్స్": ["scholarship", "scholarships", "post-matric", "rtf", "mtf", "vidya", "deevena"],
+        "విద్యార్థి": ["student", "students", "scholarship", "vidyarthi"],
+        "విద్యార్థులు": ["students", "student", "scholarship", "vidyarthulu"],
         "వందనం": ["vandanam", "thalliki", "amma", "vodi"],
         "తల్లికి": ["mother", "thalliki", "vandanam", "amma"],
         "హాజరు": ["attendance", "present", "percentage"],
@@ -241,6 +248,37 @@ SECTION_INTENT_MAP: Dict[str, Set[str]] = {
 }
 
 
+GENERIC_ADMIN_TOKENS = {
+    "andhra", "pradesh", "ap", "government", "govt", "portal", "online",
+    "application", "guidelines", "details", "system", "program", "programs",
+    "scheme", "schemes", "apply", "rules", "services", "service", "process",
+    "procedure", "official", "status", "form", "enrollment", "registration",
+    "booking", "criteria", "eligible", "eligibility",
+    "పథకం", "పథకాలు", "పథకానికి", "ప్రభుత్వం", "ఆంధ్రప్రదేశ్", "విధానం",
+    "సేవలు", "వివరాలు", "దరఖాస్తు", "నమోదు", "పోర్టల్", "ఆన్‌లైన్", "ఆన్", "లైన్",
+}
+
+
+SCHEME_DOMAIN_WORDS: Set[str] = {
+    "scholarship", "scholarships", "post-matric", "vidya", "vasathi", "deevena", "vandanam",
+    "pension", "pensions", "housing", "house", "illu", "patta", "ration", "rice",
+    "hospital", "hospitals", "medical", "treatment", "doctor", "health",
+    "farmer", "farmers", "crop", "crops", "agriculture", "kisan", "sukhibhava", "bharosa",
+    "mgnregs", "employment", "wage", "wages", "job", "card", "labor",
+    "విద్యార్థి", "విద్యార్థులు", "స్కాలర్షిప్", "స్కాలర్‌షిప్", "స్కాలర్షిప్స్", "స్కాలర్‌షిప్స్",
+}
+
+ALL_INTENT_TOKENS: Set[str] = set()
+for _intent, _lang_map in INTENT_KEYWORDS.items():
+    ALL_INTENT_TOKENS.update(_lang_map["en"])
+    ALL_INTENT_TOKENS.update(_lang_map["te"])
+for _te_w, _syns in MultilingualTokenizer.BILINGUAL_SYNONYMS.items():
+    if any(_s in ALL_INTENT_TOKENS for _s in _syns):
+        ALL_INTENT_TOKENS.add(_te_w)
+        ALL_INTENT_TOKENS.update(_syns)
+ALL_INTENT_TOKENS.difference_update(SCHEME_DOMAIN_WORDS)
+
+
 def detect_query_intents(query: str, query_tokens: List[str]) -> Set[str]:
     """
     Detects question intent categories (amount, eligibility, documents, application)
@@ -356,6 +394,13 @@ class HybridMultilingualIndexer:
             return []
 
         intents = detect_query_intents(clean_query, query_tokens)
+        named_doc_ids = detect_named_schemes(clean_query)
+
+        # RELEVANCE SAFETY GATE: If query consists solely of generic administrative words
+        # without naming any specific scheme or domain entity, reject to prevent returning unrelated schemes.
+        if not named_doc_ids and informative_tokens and informative_tokens.issubset(GENERIC_ADMIN_TOKENS):
+            return []
+
         query_counter = Counter(query_tokens)
         candidate_scores: Dict[int, float] = {}
 
@@ -378,11 +423,20 @@ class HybridMultilingualIndexer:
             postings = self.inverted_index.get(token, [])
             for doc_idx, doc_freq in postings:
                 chunk = self.chunks[doc_idx]
-
-                # STRICT DOMAIN FILTER: Match assistant identifier against chunk domain
                 chunk_domain = chunk.metadata.get("domain", "").lower()
-                if chunk_domain != assistant.lower():
-                    continue
+                chunk_doc_id = chunk.metadata.get("doc_id", "")
+
+                # SCHEME-AWARE DOMAIN FILTER:
+                # If an explicit scheme was named, ONLY accept chunks belonging to that named scheme document(s).
+                # This ensures cross-domain schemes (like agricultural welfare schemes queried under 'schemes')
+                # are retrieved while completely preventing unrelated schemes (Housing, Pension) from polluting.
+                if named_doc_ids:
+                    if chunk_doc_id not in named_doc_ids:
+                        continue
+                else:
+                    # No specific scheme was named: strictly isolate to the assistant's domain
+                    if chunk_domain != assistant.lower():
+                        continue
 
                 # Geographic filter: if chunk has specific district and user specified different district
                 chunk_district = chunk.metadata.get("district")
@@ -400,16 +454,25 @@ class HybridMultilingualIndexer:
             return []
 
         # Check maximum document title matches among candidates to determine if a specific scheme was named
-        max_title_matches = max(
-            (sum(1 for tok in informative_tokens if tok in self.chunks[d].title.lower()) for d in candidate_scores),
-            default=0,
-        )
+        GENERIC_TITLE_WORDS = {
+            "scheme", "schemes", "guidelines", "details", "system", "program", "programs",
+            "ap", "andhra", "pradesh", "government", "govt", "portal", "rules", "services",
+            "పథకం", "పథకాలు", "పథకానికి", "ప్రభుత్వం", "ఆంధ్రప్రదేశ్", "విధానం", "సేవలు", "వివరాలు",
+        }
+        if named_doc_ids:
+            max_title_matches = 2
+        else:
+            max_title_matches = max(
+                (sum(1 for tok in informative_tokens if tok not in GENERIC_TITLE_WORDS and tok in self.chunks[d].title.lower()) for d in candidate_scores),
+                default=0,
+            )
 
         scored_results: List[RetrievedChunk] = []
 
         # 2. Coverage, intent alignment, and ranking evaluation
         for doc_idx, raw_score in candidate_scores.items():
             chunk = self.chunks[doc_idx]
+            chunk_doc_id = chunk.metadata.get("doc_id", "")
             doc_token_set = self.doc_token_sets[doc_idx]
 
             # Calculate query term coverage
@@ -425,15 +488,28 @@ class HybridMultilingualIndexer:
             if informative_tokens and coverage == 0.0:
                 continue
 
-            # Document Title match score
-            title_lower = chunk.title.lower()
-            title_matches = sum(1 for tok in informative_tokens if tok in title_lower)
-            if title_matches >= 2:
+            # If the query contains subject tokens (tokens that are NOT purely intent or generic admin words),
+            # at least one non-intent query word must match the document!
+            # Otherwise, matching purely on "eligibility / criteria" or "how to apply" would falsely return
+            # housing or pension for completely unsupported subjects (e.g. laptops, scooters).
+            subject_tokens = [tok for tok in informative_tokens if tok not in ALL_INTENT_TOKENS and tok not in GENERIC_ADMIN_TOKENS]
+            if subject_tokens:
+                matched_subject = any(tok in doc_token_set for tok in subject_tokens)
+                if not matched_subject and not (named_doc_ids and chunk_doc_id in named_doc_ids):
+                    continue
+
+            # Document Title match score: guaranteed 1.0 for explicitly named schemes
+            if named_doc_ids and chunk_doc_id in named_doc_ids:
                 title_score = 1.0
-            elif title_matches == 1:
-                title_score = 0.40
             else:
-                title_score = 0.0
+                title_lower = chunk.title.lower()
+                title_matches = sum(1 for tok in informative_tokens if tok not in GENERIC_TITLE_WORDS and tok in title_lower)
+                if title_matches >= 2:
+                    title_score = 1.0
+                elif title_matches == 1:
+                    title_score = 0.40
+                else:
+                    title_score = 0.0
 
             # Section Title & Intent alignment score
             sec_title = chunk.metadata.get("section_title", "").lower()
@@ -446,9 +522,10 @@ class HybridMultilingualIndexer:
                     section_kw_set = SECTION_INTENT_MAP.get(intent, set())
                     for target in section_kw_set:
                         if target.lower() in sec_title:
-                            # Full intent bonus if document matches title, or if no candidate had strong title match
-                            if title_score >= 0.40 or max_title_matches < 2:
+                            if title_score >= 0.40:
                                 intent_match_score = 1.0
+                            elif title_score > 0.0:
+                                intent_match_score = 0.50
                             else:
                                 intent_match_score = 0.0
                             break
@@ -458,6 +535,12 @@ class HybridMultilingualIndexer:
             sec_score = max(sec_lexical_score, intent_match_score)
             if max_title_matches >= 2:
                 sec_score = sec_score * (0.30 + 0.70 * title_score)
+
+            # When no named scheme is detected and document title has zero lexical match,
+            # require stronger evidence to prevent unrelated schemes from polluting unknown scheme queries
+            if not named_doc_ids and title_score == 0.0:
+                if coverage < 0.50 or sec_score < 0.30:
+                    continue
 
             # Continuous, non-saturating BM25 scale
             scaled_bm25 = raw_score / (raw_score + 20.0)
