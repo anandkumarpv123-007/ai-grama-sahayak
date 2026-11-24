@@ -1,9 +1,17 @@
 import logging
-from fastapi import APIRouter, status
+from typing import Optional
+from fastapi import APIRouter, BackgroundTasks, status
 from app.schemas.eligibility import EligibilityRequest, EligibilityResponse
 from app.core.eligibility_rules import evaluate_scheme_eligibility
 from app.core.exceptions import BadRequestException
-from app.database.session import get_session_factory
+from app.core.config import settings
+from app.database.session import (
+    get_session_factory,
+    get_database_status,
+    DatabaseStatus,
+    record_db_failure,
+    record_db_success,
+)
 from app.models.eligibility_log import EligibilityAudit
 
 logger = logging.getLogger("ai_grama_sahayak.api.eligibility")
@@ -17,11 +25,25 @@ def _save_eligibility_audit_safely(
 ) -> None:
     """
     Safely records eligibility assessment in PostgreSQL for audit and transparency.
-    Non-blocking if database is unavailable.
+    Completely non-blocking when database is disabled, unconfigured, or unreachable.
+    Does not expose sensitive applicant information or credentials in logs.
     """
     try:
+        if not getattr(settings, "DATABASE_AUDIT_ENABLED", True):
+            logger.debug("Eligibility audit log skipped: DATABASE_AUDIT_ENABLED is False.")
+            return
+
+        db_status = get_database_status(timeout=0.3)
+        if db_status != DatabaseStatus.AVAILABLE_OPERATIONAL:
+            logger.debug(
+                "Eligibility audit log skipped: database is %s.",
+                db_status.value,
+            )
+            return
+
         session_factory = get_session_factory()
-        with session_factory() as session:
+        session = session_factory()
+        try:
             audit = EligibilityAudit(
                 scheme_id=response.scheme_id,
                 status=response.status.value,
@@ -30,8 +52,28 @@ def _save_eligibility_audit_safely(
             )
             session.add(audit)
             session.commit()
+            record_db_success()
+            logger.debug(
+                "Eligibility audit log successfully saved for scheme '%s'.",
+                response.scheme_id,
+            )
+        except Exception as exc:
+            session.rollback()
+            record_db_failure()
+            # Safe logging without exposing credentials or applicant PII
+            logger.debug(
+                "Eligibility audit log skipped/failed: %s",
+                type(exc).__name__,
+            )
+        finally:
+            session.close()
     except Exception as exc:
-        logger.debug("Eligibility audit log skipped/failed: %s", exc)
+        record_db_failure()
+        # Safe logging without exposing credentials or applicant PII
+        logger.debug(
+            "Eligibility audit log skipped/failed: %s",
+            type(exc).__name__,
+        )
 
 
 @router.post(
@@ -44,7 +86,10 @@ def _save_eligibility_audit_safely(
         "Returns only the agreed statuses: eligible, ineligible, needs_more_information, unable_to_verify."
     ),
 )
-async def check_eligibility_endpoint(request: EligibilityRequest) -> EligibilityResponse:
+async def check_eligibility_endpoint(
+    request: EligibilityRequest,
+    background_tasks: BackgroundTasks = None,
+) -> EligibilityResponse:
     scheme_id = request.scheme_id.strip()
     if not scheme_id:
         raise BadRequestException(
@@ -70,5 +115,10 @@ async def check_eligibility_endpoint(request: EligibilityRequest) -> Eligibility
         sources=result["sources"],
     )
 
-    _save_eligibility_audit_safely(request, response)
+    # Dispatch audit logging safely as background task to ensure event loop is never blocked
+    if background_tasks is not None:
+        background_tasks.add_task(_save_eligibility_audit_safely, request, response)
+    else:
+        _save_eligibility_audit_safely(request, response)
+
     return response
