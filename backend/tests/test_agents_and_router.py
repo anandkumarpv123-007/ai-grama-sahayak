@@ -100,3 +100,27 @@ def test_grounded_evidence_synthesis_and_sources():
     assert res["sources"][0].url == "https://sspensions.ap.gov.in"
     assert res["sources"][0].publisher == "Panchayat Raj Dept, AP"
     assert res["needs_follow_up"] is False
+
+
+def test_detect_named_schemes():
+    from app.services.retrieval.scheme_registry import detect_named_schemes, SCHEME_REGISTRY
+    # Telugu Annadata Sukhibhava query
+    te_schemes = detect_named_schemes("అన్నదాత సుఖీభవ పథకానికి ఎలా దరఖాస్తు చేయాలి?")
+    assert len(te_schemes) == 1
+    assert te_schemes[0] == "agri_annadata_sukhibhava_pmkisan"
+    assert SCHEME_REGISTRY[te_schemes[0]]["domain"] == "agriculture"
+
+    # English Annadata Sukhibhava query
+    en_schemes = detect_named_schemes("How to apply for Annadata Sukhibhava PM Kisan?")
+    assert len(en_schemes) == 1
+    assert en_schemes[0] == "agri_annadata_sukhibhava_pmkisan"
+
+    # Telugu NTR Bharosa query
+    pension_schemes = detect_named_schemes("ఎన్టీఆర్ భరోసా పెన్షన్ వివరాలు")
+    assert len(pension_schemes) == 1
+    assert pension_schemes[0] == "schemes_ntr_bharosa_pension"
+    assert SCHEME_REGISTRY[pension_schemes[0]]["domain"] == "schemes"
+
+    # Unnamed generic query returns empty list
+    generic = detect_named_schemes("How do I submit an application at the village office?")
+    assert generic == []
