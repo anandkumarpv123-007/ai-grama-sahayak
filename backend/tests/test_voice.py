@@ -39,6 +39,7 @@ from app.services.voice.transcription import (
     VoiceServiceException,
     MAX_AUDIO_SIZE_BYTES,
     is_valid_audio_magic,
+    detect_container_mime,
 )
 
 
@@ -59,15 +60,20 @@ def run_sync(coro):
     return res
 
 
-def create_dummy_wav_bytes(duration_sec: float = 0.05) -> bytes:
+def create_dummy_wav_bytes(
+    duration_sec: float = 0.05,
+    channels: int = 1,
+    sampwidth: int = 2,
+    framerate: int = 16000,
+) -> bytes:
     """Helper to create a small valid WAV file with standard RIFF header."""
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(16000)
-        num_samples = int(16000 * duration_sec)
-        wf.writeframes(b"\x00\x00" * num_samples)
+        wf.setnchannels(channels)
+        wf.setsampwidth(sampwidth)
+        wf.setframerate(framerate)
+        num_samples = int(framerate * duration_sec)
+        wf.writeframes(b"\x00" * (channels * sampwidth * num_samples))
     return buf.getvalue()
 
 
@@ -205,6 +211,146 @@ class TestVoiceTranscriptionValidation(unittest.TestCase):
             self.assertEqual(res["transcribed_text"], "How do I apply for Rythu Bharosa?")
             self.assertIsNone(res["confidence"])
 
+    def test_transcribe_normalizes_parameterized_webm_mime(self):
+        """Verify audio/webm;codecs=opus is normalized to audio/webm before forwarding to Sarvam."""
+        service = VoiceTranscriptionService()
+        service.sarvam_key = "test_key"
+        service.openai_key = None
+        dummy_webm = b"\x1a\x45\xdf\xa3" + b"\x00" * 40
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "transcript": "గ్రామ పంచాయతీ సేవలు",
+            "confidence": 0.92
+        }
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            res = run_sync(service.transcribe("recording.webm", "audio/webm;codecs=opus", dummy_webm, "te"))
+            self.assertEqual(res["transcribed_text"], "గ్రామ పంచాయతీ సేవలు")
+            self.assertEqual(len(mock_client.recorded_calls), 1)
+            file_tuple = mock_client.recorded_calls[0]["files"]["file"]
+            self.assertEqual(file_tuple[0], "recording.webm")
+            self.assertEqual(file_tuple[2], "audio/webm")
+
+    def test_transcribe_normalizes_parameterized_ogg_mime(self):
+        """Verify audio/ogg;codecs=opus is normalized to audio/ogg before forwarding to Sarvam."""
+        service = VoiceTranscriptionService()
+        service.sarvam_key = "test_key"
+        service.openai_key = None
+        dummy_ogg = b"OggS" + b"\x00" * 40
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "transcript": "hello grama sahayak",
+            "confidence": 0.88
+        }
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            res = run_sync(service.transcribe("recording.ogg", "audio/ogg;codecs=opus", dummy_ogg, "en"))
+            self.assertEqual(res["transcribed_text"], "hello grama sahayak")
+            self.assertEqual(len(mock_client.recorded_calls), 1)
+            file_tuple = mock_client.recorded_calls[0]["files"]["file"]
+            self.assertEqual(file_tuple[0], "recording.ogg")
+            self.assertEqual(file_tuple[2], "audio/ogg")
+
+    def test_transcribe_provider_format_error_maps_to_400(self):
+        """Verify provider 400 with Invalid file type raises INVALID_AUDIO_FORMAT 400, not 503."""
+        service = VoiceTranscriptionService()
+        service.sarvam_key = "test_key"
+        service.openai_key = None
+        dummy_webm = b"\x1a\x45\xdf\xa3" + b"\x00" * 40
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 400
+        mock_resp.json.return_value = {
+            "error": {"message": "Invalid file type: audio/unsupported. Only audio/webm allowed."}
+        }
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with self.assertRaises(VoiceServiceException) as ctx:
+                run_sync(service.transcribe("recording.webm", "audio/webm", dummy_webm, "te"))
+            self.assertEqual(ctx.exception.status_code, 400)
+            self.assertEqual(ctx.exception.code, "INVALID_AUDIO_FORMAT")
+
+    def test_transcribe_provider_request_error_maps_to_400(self):
+        """Verify generic provider 400 error raises INVALID_AUDIO_REQUEST 400, not 503."""
+        service = VoiceTranscriptionService()
+        service.sarvam_key = "test_key"
+        service.openai_key = None
+        dummy_webm = b"\x1a\x45\xdf\xa3" + b"\x00" * 40
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 400
+        mock_resp.json.return_value = {
+            "error": {"message": "Invalid model parameter specified"}
+        }
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with self.assertRaises(VoiceServiceException) as ctx:
+                run_sync(service.transcribe("recording.webm", "audio/webm", dummy_webm, "te"))
+            self.assertEqual(ctx.exception.status_code, 400)
+            self.assertEqual(ctx.exception.code, "INVALID_AUDIO_REQUEST")
+
+    def test_detect_container_mime_formats(self):
+        """Verify detect_container_mime accurately identifies container types from magic bytes."""
+        webm_data = b"\x1a\x45\xdf\xa3" + b"\x00" * 30
+        wav_data = create_dummy_wav_bytes()
+        ogg_data = b"OggS" + b"\x00" * 30
+        mp3_data = b"ID3" + b"\x00" * 30
+        flac_data = b"fLaC" + b"\x00" * 30
+        mp4_data = b"\x00\x00\x00\x20ftypM4A " + b"\x00" * 20
+        corrupt_data = b"NOT_AUDIO_FILE_DATA_1234567890"
+
+        self.assertEqual(detect_container_mime(webm_data), "audio/webm")
+        self.assertEqual(detect_container_mime(wav_data), "audio/wav")
+        self.assertEqual(detect_container_mime(ogg_data), "audio/ogg")
+        self.assertEqual(detect_container_mime(mp3_data), "audio/mpeg")
+        self.assertEqual(detect_container_mime(flac_data), "audio/flac")
+        self.assertEqual(detect_container_mime(mp4_data), "audio/mp4")
+        self.assertIsNone(detect_container_mime(corrupt_data))
+        self.assertIsNone(detect_container_mime(b""))
+
+    def test_transcribe_detects_container_from_binary_when_mime_is_octet_stream(self):
+        """Verify binary header detection prevents defaulting to WAV when octet-stream is supplied."""
+        service = VoiceTranscriptionService()
+        service.sarvam_key = "test_key"
+        service.openai_key = None
+        dummy_webm = b"\x1a\x45\xdf\xa3" + b"\x00" * 40
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "transcript": "ధృవీకరించబడిన ఆడియో",
+            "confidence": 0.95
+        }
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            res = run_sync(service.transcribe("audio.bin", "application/octet-stream", dummy_webm, "te"))
+            self.assertEqual(res["transcribed_text"], "ధృవీకరించబడిన ఆడియో")
+            self.assertEqual(len(mock_client.recorded_calls), 1)
+            file_tuple = mock_client.recorded_calls[0]["files"]["file"]
+            self.assertEqual(file_tuple[0], "audio.webm")
+            self.assertEqual(file_tuple[2], "audio/webm")
+
+    def test_transcribe_ambiguous_headerless_audio_rejected_400(self):
+        """Verify non-audio bytes with application/octet-stream are rejected with 400 without assuming WAV."""
+        service = VoiceTranscriptionService()
+        service.sarvam_key = "test_key"
+        service.openai_key = None
+        fake_bytes = b"TEXT_NOT_AN_AUDIO_HEADER_123456789"
+
+        with self.assertRaises(VoiceServiceException) as ctx:
+            run_sync(service.transcribe("unknown.bin", "application/octet-stream", fake_bytes, "en"))
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(ctx.exception.code, "INVALID_AUDIO_FORMAT")
+
 
 class TestVoiceSynthesisValidation(unittest.TestCase):
     """Test validation and chunking in VoiceSynthesisService."""
@@ -291,7 +437,7 @@ class TestVoiceSynthesisValidation(unittest.TestCase):
         dummy_b64 = base64.b64encode(dummy_wav).decode("utf-8")
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.json.return_value = {"audios": [dummy_b64, dummy_b64]}
+        mock_resp.json.return_value = {"audios": [dummy_b64, dummy_b64, dummy_b64]}
         mock_client = MockHttpxClient(mock_resp)
 
         with patch("httpx.AsyncClient", return_value=mock_client):
@@ -421,6 +567,240 @@ class TestVoiceRouterEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 413)
         body = json.loads(res.body.decode())
         self.assertEqual(body["error"]["code"], "PAYLOAD_TOO_LARGE")
+
+
+class TestVoiceConfiguration(unittest.TestCase):
+    """Verify centralized environment and settings loading."""
+
+    def test_settings_voice_defaults(self):
+        from app.core.config import Settings
+        s = Settings()
+        self.assertEqual(s.SARVAM_STT_MODEL, "saaras:v4")
+        self.assertEqual(s.SARVAM_TTS_MODEL, "bulbul:v3")
+        self.assertEqual(s.SARVAM_TTS_SPEAKER, "kavitha")
+
+    def test_process_env_precedence(self):
+        from app.core.config import Settings
+        with patch.dict(os.environ, {
+            "SARVAM_STT_MODEL": "test-stt-override",
+            "SARVAM_TTS_MODEL": "test-tts-override",
+            "SARVAM_TTS_SPEAKER": "test-speaker-override",
+        }):
+            s = Settings()
+            self.assertEqual(s.SARVAM_STT_MODEL, "test-stt-override")
+            self.assertEqual(s.SARVAM_TTS_MODEL, "test-tts-override")
+            self.assertEqual(s.SARVAM_TTS_SPEAKER, "test-speaker-override")
+
+    def test_missing_key_behavior_isolated(self):
+        """Verify service raises 503 when explicitly initialized without keys."""
+        wav = create_dummy_wav_bytes()
+        service_stt = VoiceTranscriptionService(sarvam_key="", openai_key="")
+        with self.assertRaises(VoiceServiceException) as ctx:
+            run_sync(service_stt.transcribe("sample.wav", "audio/wav", wav, "en"))
+        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertEqual(ctx.exception.code, "VOICE_PROVIDER_UNAVAILABLE")
+
+        service_tts = VoiceSynthesisService(sarvam_key="", openai_key="")
+        with self.assertRaises(VoiceServiceException) as ctx:
+            run_sync(service_tts.speak("Test text", "en"))
+        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertEqual(ctx.exception.code, "VOICE_PROVIDER_UNAVAILABLE")
+
+
+class TestSarvamModelCompatibility(unittest.TestCase):
+    """Verify current Sarvam model parameters and provider failure modes."""
+
+    def test_transcribe_sarvam_uses_saaras_v4(self):
+        service = VoiceTranscriptionService(sarvam_key="mock_key", openai_key=None)
+        wav = create_dummy_wav_bytes()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "request_id": "test_req_123",
+            "transcript": "రైతు భరోసా",
+            "language_code": "te-IN"
+        }
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            res = run_sync(service.transcribe("sample.wav", "audio/wav", wav, "te"))
+            self.assertEqual(res["transcribed_text"], "రైతు భరోసా")
+            self.assertEqual(res["language"], "te")
+            self.assertIsNone(res["confidence"])
+            self.assertEqual(len(mock_client.recorded_calls), 1)
+            call = mock_client.recorded_calls[0]
+            self.assertEqual(call["data"]["model"], "saaras:v4")
+            self.assertEqual(call["data"]["language_code"], "te-IN")
+            self.assertEqual(call["headers"]["api-subscription-key"], "mock_key")
+
+    def test_speak_sarvam_uses_bulbul_v3_and_kavitha(self):
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None)
+        dummy_wav = create_dummy_wav_bytes()
+        dummy_b64 = base64.b64encode(dummy_wav).decode("utf-8")
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"audios": [dummy_b64]}
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            res = run_sync(service.speak("నమస్కారం", "te"))
+            self.assertEqual(res["language"], "te")
+            self.assertEqual(res["mime_type"], "audio/wav")
+            self.assertEqual(len(mock_client.recorded_calls), 1)
+            call = mock_client.recorded_calls[0]
+            self.assertEqual(call["json"]["model"], "bulbul:v3")
+            self.assertEqual(call["json"]["speaker"], "kavitha")
+            self.assertEqual(call["json"]["target_language_code"], "te-IN")
+            self.assertEqual(call["headers"]["api-subscription-key"], "mock_key")
+
+    def test_transcribe_sarvam_http_errors_raise_503(self):
+        service = VoiceTranscriptionService(sarvam_key="mock_key", openai_key=None)
+        wav = create_dummy_wav_bytes()
+
+        for status_code in [401, 429, 500, 502, 503]:
+            mock_resp = MagicMock()
+            mock_resp.status_code = status_code
+            mock_resp.text = f"Error {status_code}"
+            mock_client = MockHttpxClient(mock_resp)
+
+            with patch("httpx.AsyncClient", return_value=mock_client):
+                with self.assertRaises(VoiceServiceException) as ctx:
+                    run_sync(service.transcribe("sample.wav", "audio/wav", wav, "en"))
+                self.assertEqual(ctx.exception.status_code, 503)
+                self.assertEqual(ctx.exception.code, "VOICE_PROVIDER_UNAVAILABLE")
+
+    def test_speak_sarvam_http_errors_raise_503(self):
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None)
+
+        for status_code in [400, 401, 429, 500, 503]:
+            mock_resp = MagicMock()
+            mock_resp.status_code = status_code
+            mock_resp.text = f"Error {status_code}"
+            mock_client = MockHttpxClient(mock_resp)
+
+            with patch("httpx.AsyncClient", return_value=mock_client):
+                with self.assertRaises(VoiceServiceException) as ctx:
+                    run_sync(service.speak("Hello citizen", "en"))
+                self.assertEqual(ctx.exception.status_code, 503)
+                self.assertEqual(ctx.exception.code, "VOICE_PROVIDER_UNAVAILABLE")
+
+    def test_speak_sarvam_empty_audios_raises_503(self):
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None)
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"audios": []}
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with self.assertRaises(VoiceServiceException) as ctx:
+                run_sync(service.speak("Hello citizen", "en"))
+            self.assertEqual(ctx.exception.status_code, 503)
+            self.assertEqual(ctx.exception.code, "VOICE_PROVIDER_UNAVAILABLE")
+
+    def test_multi_chunk_wav_combining(self):
+        chunk1 = create_dummy_wav_bytes(duration_sec=0.05)
+        chunk2 = create_dummy_wav_bytes(duration_sec=0.05)
+        b64_1 = base64.b64encode(chunk1).decode("utf-8")
+        b64_2 = base64.b64encode(chunk2).decode("utf-8")
+
+        combined_b64 = combine_wav_base64_chunks([b64_1, b64_2])
+        combined_bytes = base64.b64decode(combined_b64)
+
+        with wave.open(io.BytesIO(combined_bytes), "rb") as wf:
+            self.assertEqual(wf.getnchannels(), 1)
+            self.assertEqual(wf.getsampwidth(), 2)
+            self.assertEqual(wf.getframerate(), 16000)
+            self.assertGreater(wf.getnframes(), 1000)
+
+    def test_combine_wav_strict_all_or_nothing_validation(self):
+        """Strict all-or-nothing validation rejects any malformed, inconsistent, or empty chunk."""
+        valid_chunk = base64.b64encode(create_dummy_wav_bytes(duration_sec=0.05, framerate=8000)).decode("utf-8")
+
+        # 1. Empty list
+        with self.assertRaises(ValueError):
+            combine_wav_base64_chunks([])
+
+        # 2. Malformed base64
+        with self.assertRaises(ValueError):
+            combine_wav_base64_chunks([valid_chunk, "not-valid-base64!"])
+
+        # 3. Truncated header
+        short_b64 = base64.b64encode(b"RIFFshort").decode("utf-8")
+        with self.assertRaises(ValueError):
+            combine_wav_base64_chunks([valid_chunk, short_b64])
+
+        # 4. Inconsistent framerate
+        diff_rate_chunk = base64.b64encode(create_dummy_wav_bytes(duration_sec=0.05, framerate=16000)).decode("utf-8")
+        with self.assertRaises(ValueError):
+            combine_wav_base64_chunks([valid_chunk, diff_rate_chunk])
+
+        # 5. Inconsistent channels (stereo vs mono)
+        stereo_chunk = base64.b64encode(create_dummy_wav_bytes(channels=2, duration_sec=0.05, framerate=8000)).decode("utf-8")
+        with self.assertRaises(ValueError):
+            combine_wav_base64_chunks([valid_chunk, stereo_chunk])
+
+    def test_speak_overall_synthesis_deadline_enforced(self):
+        """Synthesis aborts with 504 when overall deadline is exceeded across batches."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None)
+        mock_client = MagicMock()
+
+        async def mock_post(*args, **kwargs):
+            import httpx
+            raise httpx.TimeoutException("Client timed out")
+
+        mock_client.__aenter__.return_value.post = mock_post
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with self.assertRaises(VoiceServiceException) as ctx:
+                run_sync(service.speak("Test deadline", "en"))
+            self.assertEqual(ctx.exception.status_code, 504)
+            self.assertEqual(ctx.exception.code, "VOICE_SYNTHESIS_TIMEOUT")
+
+    def test_speak_sarvam_rejects_missing_audio_chunks(self):
+        """Sarvam provider rejects batch response if returned audio count does not match batch count."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None)
+        dummy_wav = create_dummy_wav_bytes(framerate=8000)
+        dummy_b64 = base64.b64encode(dummy_wav).decode("utf-8")
+
+        two_chunk_text = "First long sentence for testing text chunking. Second long sentence for testing text chunking."
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"audios": [dummy_b64]}  # Only 1 audio returned for 2 chunks!
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("app.services.voice.synthesis.chunk_text", return_value=["Sentence 1", "Sentence 2"]):
+            with patch("httpx.AsyncClient", return_value=mock_client):
+                with self.assertRaises(VoiceServiceException) as ctx:
+                    run_sync(service.speak(two_chunk_text, "en"))
+                self.assertEqual(ctx.exception.status_code, 503)
+
+    def test_speak_sarvam_multi_batch_production_chunks(self):
+        """Verifies multi-batch synthesis under production settings when chunks > 3."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None)
+        dummy_wav = create_dummy_wav_bytes(framerate=8000)
+        dummy_b64 = base64.b64encode(dummy_wav).decode("utf-8")
+
+        mock_client = MagicMock()
+        call_count = 0
+
+        async def mock_post(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            payload = kwargs.get("json", {})
+            batch_inputs = payload.get("inputs", [])
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.json.return_value = {"audios": [dummy_b64] * len(batch_inputs)}
+            return resp
+
+        mock_client.__aenter__.return_value.post = mock_post
+
+        four_chunks = ["Chunk 1", "Chunk 2", "Chunk 3", "Chunk 4"]
+        with patch("app.services.voice.synthesis.chunk_text", return_value=four_chunks):
+            with patch("httpx.AsyncClient", return_value=mock_client):
+                res = run_sync(service.speak("Multi-batch text", "te"))
+                self.assertIn("audio_base64", res)
+                self.assertEqual(call_count, 2)
 
 
 if __name__ == "__main__":

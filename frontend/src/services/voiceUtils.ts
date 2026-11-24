@@ -251,3 +251,88 @@ export function selectBrowserVoice(
     hasGenuineVoice: true,
   };
 }
+
+/**
+ * Common recording formats ordered by compression quality and provider compatibility.
+ */
+export const CANDIDATE_AUDIO_MIME_TYPES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/ogg;codecs=opus",
+  "audio/ogg",
+  "audio/mp4",
+  "audio/aac",
+  "audio/wav",
+];
+
+/**
+ * Dynamically selects the best supported MediaRecorder MIME type on the user's browser.
+ * Accepts an optional isTypeSupportedFn for clean headless testing.
+ */
+export function getSupportedMimeType(
+  isTypeSupportedFn?: (type: string) => boolean
+): string {
+  const checkFn =
+    isTypeSupportedFn ||
+    (typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined"
+      ? (t: string) => window.MediaRecorder.isTypeSupported(t)
+      : null);
+
+  if (!checkFn) {
+    return "";
+  }
+
+  for (const candidate of CANDIDATE_AUDIO_MIME_TYPES) {
+    try {
+      if (checkFn(candidate)) {
+        return candidate;
+      }
+    } catch {
+      // Continue checking next candidate
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Resolves the appropriate filename and container MIME type for a recorded audio Blob.
+ * Strictly prevents incorrect renaming of WebM/Opus audio to WAV.
+ */
+export function getAudioFilenameAndType(blob: { type?: string }): {
+  filename: string;
+  mimeType: string;
+} {
+  const rawType = (blob.type || "").toLowerCase().trim();
+
+  if (rawType.includes("webm")) {
+    return { filename: "recording.webm", mimeType: "audio/webm" };
+  }
+  if (rawType.includes("mp4") || rawType.includes("m4a") || rawType.includes("aac")) {
+    return { filename: "recording.m4a", mimeType: "audio/mp4" };
+  }
+  if (rawType.includes("ogg")) {
+    return { filename: "recording.ogg", mimeType: "audio/ogg" };
+  }
+  if (rawType.includes("mp3") || rawType.includes("mpeg")) {
+    return { filename: "recording.mp3", mimeType: "audio/mpeg" };
+  }
+  if (rawType.includes("wav") || rawType.includes("wave")) {
+    return { filename: "recording.wav", mimeType: "audio/wav" };
+  }
+
+  // Default fallback if blob type is empty or generic application/octet-stream
+  return { filename: "recording.webm", mimeType: "audio/webm" };
+}
+
+/**
+ * Formats elapsed seconds into an accessible mm:ss display string.
+ */
+export function formatDuration(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const mins = Math.floor(safeSeconds / 60);
+  const secs = safeSeconds % 60;
+  const mm = mins.toString().padStart(2, "0");
+  const ss = secs.toString().padStart(2, "0");
+  return `${mm}:${ss}`;
+}

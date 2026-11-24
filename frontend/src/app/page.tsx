@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   sendChatMessage,
+  transcribeAudio,
   Source,
   ApiException,
 } from "../services/api";
+import { getSupportedMimeType, formatDuration } from "../services/voiceUtils";
 import DocumentAnalysis from "../components/DocumentAnalysis";
 import NearbyServices from "../components/NearbyServices";
 import GrievanceDrafting from "../components/GrievanceDrafting";
@@ -90,6 +92,15 @@ const categories = [
 
 type ActiveTab = "chat" | "documents" | "services" | "grievances";
 
+export type VoiceRecordingState =
+  | "idle"
+  | "requesting_permission"
+  | "recording"
+  | "transcribing"
+  | "transcribed"
+  | "cancelled"
+  | "error";
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("chat");
   const [language, setLanguage] = useState("Telugu");
@@ -97,13 +108,25 @@ export default function Home() {
   const [showEligibility, setShowEligibility] = useState(false);
   const [question, setQuestion] = useState("");
   const [voiceMessage, setVoiceMessage] = useState("");
-  const [isListening, setIsListening] = useState(false);
+  const [recordingState, setRecordingState] = useState<VoiceRecordingState>("idle");
+  const [recordingDuration, setRecordingDuration] = useState(0);
+
+  const isListening = recordingState === "recording" || recordingState === "requesting_permission";
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const maxDurationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const voiceAbortControllerRef = useRef<AbortController | null>(null);
+  const voiceRequestSeqRef = useRef<number>(0);
+  const isVoiceCancelledRef = useRef<boolean>(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const conversationIdRef = useRef<string | null>(null);
@@ -120,83 +143,174 @@ export default function Home() {
     }
   }, [messages, isThinking, activeTab]);
 
+  // Clean up media tracks to turn off hardware microphone indicator
+  const cleanupMediaStream = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          // ignore
+        }
+      });
+      mediaStreamRef.current = null;
+    }
+  }, []);
+
+  const clearRecordingTimers = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (maxDurationTimerRef.current) {
+      clearTimeout(maxDurationTimerRef.current);
+      maxDurationTimerRef.current = null;
+    }
+  }, []);
+
+  // Cancel recording or in-flight transcription
+  const cancelVoiceInput = useCallback(() => {
+    isVoiceCancelledRef.current = true;
+    voiceRequestSeqRef.current++;
+    clearRecordingTimers();
+
+    if (voiceAbortControllerRef.current) {
+      voiceAbortControllerRef.current.abort();
+      voiceAbortControllerRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try {
+        mediaRecorderRef.current.onstop = null;
+        mediaRecorderRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
+    mediaRecorderRef.current = null;
+    cleanupMediaStream();
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
+
+    setRecordingState("cancelled");
+    setRecordingDuration(0);
+    setVoiceMessage(
+      language === "Telugu"
+        ? "రికార్డింగ్ రద్దు చేయబడింది."
+        : "Recording cancelled."
+    );
+  }, [clearRecordingTimers, cleanupMediaStream, language]);
+
   // Clean up any in-flight requests when the component unmounts
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      cancelVoiceInput();
     };
-  }, []);
+  }, [cancelVoiceInput]);
 
-  /**
-   * Browser Speech Recognition (Web Speech API).
-   * Note: Browser SpeechRecognition may use browser/vendor network services
-   * (e.g. Google speech servers in Chrome) and is not guaranteed to operate offline.
-   */
-  const startVoiceInput = () => {
+  // If user switches language while recording, cancel cleanly on cleanup
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        cancelVoiceInput();
+      }
+    };
+  }, [language, cancelVoiceInput]);
+
+  // Stop recording and package audio for backend transcription
+  const stopAndTranscribe = useCallback(() => {
+    clearRecordingTimers();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        cancelVoiceInput();
+      }
+    } else if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
+  }, [clearRecordingTimers, cancelVoiceInput]);
+
+  // Fallback: Browser Web Speech API
+  const startBrowserSpeechRecognitionFallback = useCallback(() => {
     const browserWindow = window as WindowWithSpeechRecognition;
-
     const SpeechRecognitionAPI =
       browserWindow.SpeechRecognition ||
       browserWindow.webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
+      setRecordingState("error");
       setVoiceMessage(
-        "Speech recognition is not supported in this browser. Please try Google Chrome."
+        language === "Telugu"
+          ? "ఈ బ్రౌజర్‌లో వాయిస్ రికార్డింగ్ అందుబాటులో లేదు. దయచేసి మీ ప్రశ్నను టైప్ చేయండి."
+          : "Speech recognition is not supported in this browser. Please type your question."
       );
       return;
     }
 
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
     const recognition = new SpeechRecognitionAPI();
-
     recognition.lang = language === "Telugu" ? "te-IN" : "en-IN";
-
     recognition.continuous = false;
     recognition.interimResults = false;
 
     recognition.onstart = () => {
-      setIsListening(true);
-      setVoiceMessage("Listening... Speak your question now 🎤");
+      setRecordingState("recording");
+      setVoiceMessage(
+        language === "Telugu"
+          ? "పరికర వాయిస్ ద్వారా వింటున్నాము... మాట్లాడండి 🎤"
+          : "Listening via device voice... Speak your question now 🎤"
+      );
     };
 
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
-
       setQuestion(transcript);
-      setVoiceMessage("Your speech was converted to text successfully! ✓");
+      setRecordingState("transcribed");
+      setVoiceMessage(
+        language === "Telugu"
+          ? "మీ ప్రశ్న గుర్తించబడింది! అవసరమైతే సవరించి పంపండి. ✓"
+          : "Your speech was converted to text successfully! You can edit before sending. ✓"
+      );
     };
 
     recognition.onerror = (event) => {
-      setIsListening(false);
-
+      setRecordingState("error");
       if (event.error === "not-allowed") {
         setVoiceMessage(
-          "Microphone permission denied. Please allow microphone access in your browser."
+          language === "Telugu"
+            ? "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్రోఫోన్ అనుమతించండి."
+            : "Microphone permission denied. Please allow microphone access in your browser."
         );
       } else if (event.error === "no-speech") {
         setVoiceMessage(
-          "No speech detected. Please tap the microphone and try again."
-        );
-      } else if (event.error === "network") {
-        setVoiceMessage(
-          "Network error occurred during speech recognition. Please try again."
+          language === "Telugu"
+            ? "వాయిస్ ఏమీ గుర్తించబడలేదు. మళ్ళీ ప్రయత్నించండి."
+            : "No speech detected. Please tap and try again."
         );
       } else {
         setVoiceMessage(
-          "Something went wrong with voice recognition. Please try again."
+          language === "Telugu"
+            ? "వాయిస్ గుర్తింపు విఫలమైంది. దయచేసి మీ ప్రశ్నను టైప్ చేయండి."
+            : "Speech recognition failed. Please type your question."
         );
       }
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      setRecordingState((prev) => (prev === "recording" ? "idle" : prev));
     };
 
     recognitionRef.current = recognition;
@@ -204,9 +318,227 @@ export default function Home() {
     try {
       recognition.start();
     } catch {
-      setIsListening(false);
-      setVoiceMessage("Unable to start microphone. Please try again.");
+      setRecordingState("error");
+      setVoiceMessage(
+        language === "Telugu"
+          ? "మైక్రోఫోన్ ప్రారంభం కాలేదు. దయచేసి టైప్ చేయండి."
+          : "Unable to start microphone. Please type your question."
+      );
     }
+  }, [language]);
+
+  /**
+   * Primary Voice Input: MediaRecorder -> Blob -> POST /api/voice/transcribe
+   * Never automatically submits; allows citizen to review/edit recognized question first.
+   */
+  const startVoiceInput = async () => {
+    // If currently recording, tapping the main button stops and transcribes
+    if (recordingState === "recording") {
+      stopAndTranscribe();
+      return;
+    }
+
+    if (recordingState === "transcribing" || recordingState === "requesting_permission") {
+      return; // Prevent duplicate rapid requests
+    }
+
+    isVoiceCancelledRef.current = false;
+    setRecordingDuration(0);
+    clearRecordingTimers();
+    const currentSeq = ++voiceRequestSeqRef.current;
+
+    // Check MediaRecorder and getUserMedia support
+    if (
+      typeof navigator !== "undefined" &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === "function" &&
+      typeof window !== "undefined" &&
+      typeof window.MediaRecorder !== "undefined"
+    ) {
+      setRecordingState("requesting_permission");
+      setVoiceMessage(
+        language === "Telugu"
+          ? "మైక్రోఫోన్ అనుమతి కోరుతున్నాము..."
+          : "Requesting microphone permission..."
+      );
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+
+        if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        mediaStreamRef.current = stream;
+        audioChunksRef.current = [];
+
+        const selectedMime = getSupportedMimeType();
+        const options: MediaRecorderOptions = selectedMime ? { mimeType: selectedMime } : {};
+        const recorder = new MediaRecorder(stream, options);
+        mediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        recorder.onstart = () => {
+          if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
+            recorder.stop();
+            return;
+          }
+          setRecordingState("recording");
+          setRecordingDuration(0);
+          setVoiceMessage(
+            language === "Telugu"
+              ? "రికార్డింగ్ అవుతోంది... మాట్లాడండి (గరిష్టంగా 30 సెకన్లు)"
+              : "Recording... Speak your question now (max 30s)"
+          );
+
+          // 1-second interval for duration timer
+          recordingTimerRef.current = setInterval(() => {
+            setRecordingDuration((prev) => {
+              const next = prev + 1;
+              if (next >= 30) {
+                stopAndTranscribe();
+              }
+              return next;
+            });
+          }, 1000);
+
+          // 30.5-second hard safety limit
+          maxDurationTimerRef.current = setTimeout(() => {
+            stopAndTranscribe();
+          }, 30500);
+        };
+
+        recorder.onstop = async () => {
+          clearRecordingTimers();
+          cleanupMediaStream();
+
+          if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
+            setRecordingState("cancelled");
+            return;
+          }
+
+          const chunks = audioChunksRef.current;
+          if (!chunks || chunks.length === 0) {
+            setRecordingState("error");
+            setVoiceMessage(
+              language === "Telugu"
+                ? "రికార్డింగ్‌లో వాయిస్ ఏమీ రికార్డ్ కాలేదు. మళ్ళీ ప్రయత్నించండి."
+                : "No audio was recorded. Please try speaking again."
+            );
+            return;
+          }
+
+          const actualMime = recorder.mimeType || selectedMime || "audio/webm";
+          const recordedBlob = new Blob(chunks, { type: actualMime });
+
+          // Reject empty or corrupt recordings under 500 bytes
+          if (recordedBlob.size < 500) {
+            setRecordingState("error");
+            setVoiceMessage(
+              language === "Telugu"
+                ? "రికార్డింగ్ చాలా చిన్నదిగా ఉంది. దయచేసి స్పష్టంగా మాట్లాడండి."
+                : "Recording too brief. Please speak clearly."
+            );
+            return;
+          }
+
+          setRecordingState("transcribing");
+          setVoiceMessage(
+            language === "Telugu"
+              ? "మీ వాయిస్‌ను టెక్స్ట్‌గా మారుస్తున్నాము..."
+              : "Transcribing your speech with AI..."
+          );
+
+          const controller = new AbortController();
+          voiceAbortControllerRef.current = controller;
+
+          try {
+            const langCode = language === "Telugu" ? "te" : "en";
+            const res = await transcribeAudio(recordedBlob, langCode, controller.signal);
+
+            if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
+              return;
+            }
+
+            if (res && res.transcribed_text && res.transcribed_text.trim()) {
+              setQuestion(res.transcribed_text.trim());
+              setRecordingState("transcribed");
+              setVoiceMessage(
+                language === "Telugu"
+                  ? "మీ ప్రశ్న గుర్తించబడింది! అవసరమైతే సవరించి పంపండి. ✓"
+                  : "Speech recognized! You can review or edit before sending. ✓"
+              );
+            } else {
+              setRecordingState("error");
+              setVoiceMessage(
+                language === "Telugu"
+                  ? "వాయిస్ స్పష్టంగా గుర్తించబడలేదు. మళ్ళీ మాట్లాడండి లేదా టైప్ చేయండి."
+                  : "Could not transcribe clearly. Please try again or type your question."
+              );
+            }
+          } catch (err: unknown) {
+            if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
+              return;
+            }
+            setRecordingState("error");
+            if (err instanceof ApiException && err.status === 503) {
+              setVoiceMessage(
+                language === "Telugu"
+                  ? "వాయిస్ సర్వర్ తాత్కాలికంగా ఆఫ్‌లైన్‌లో ఉంది. పరికర వాయిస్ లేదా టైప్ చేయండి."
+                  : "Voice server offline (503). You can use device voice or type."
+              );
+            } else {
+              setVoiceMessage(
+                language === "Telugu"
+                  ? "ట్రాన్స్‌క్రిప్షన్ విఫలమైంది. దయచేసి మళ్ళీ ప్రయత్నించండి."
+                  : "Transcription failed. Please try again or type your question."
+              );
+            }
+          }
+        };
+
+        recorder.start(250);
+        return;
+      } catch (err: unknown) {
+        cleanupMediaStream();
+        clearRecordingTimers();
+        const errName = err instanceof Error ? err.name : "";
+        if (errName === "NotAllowedError" || errName === "PermissionDeniedError") {
+          setRecordingState("error");
+          setVoiceMessage(
+            language === "Telugu"
+              ? "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్రోఫోన్ అనుమతించండి."
+              : "Microphone permission denied. Please allow microphone access in your browser."
+          );
+        } else if (errName === "NotFoundError" || errName === "DevicesNotFoundError") {
+          setRecordingState("error");
+          setVoiceMessage(
+            language === "Telugu"
+              ? "మీ పరికరంలో మైక్రోఫోన్ కనుగొనబడలేదు."
+              : "No microphone detected on your device."
+          );
+        } else {
+          // Fall back to Web Speech API
+          startBrowserSpeechRecognitionFallback();
+        }
+        return;
+      }
+    }
+
+    // MediaRecorder unsupported in browser: fall back to Web Speech API
+    startBrowserSpeechRecognitionFallback();
   };
 
   // Map category title to backend assistant identifier
@@ -437,43 +769,77 @@ export default function Home() {
                 Simple, accessible help for everyone.
               </p>
 
-              <button
-                className={`voice-button ${isListening ? "listening" : ""}`}
-                onClick={startVoiceInput}
-                aria-label={isListening ? "Stop listening" : "Speak your question"}
-              >
-                <span className="mic-icon">
-                  {isListening ? (
-                    <span className="recording-indicator" aria-hidden="true">
-                      <span className="recording-wave-bar"></span>
-                      <span className="recording-wave-bar"></span>
-                      <span className="recording-wave-bar"></span>
-                    </span>
-                  ) : (
-                    "🎙️"
-                  )}
-                </span>
-                <span>
-                  <strong>
-                    {isListening
-                      ? language === "Telugu"
-                        ? "రికార్డింగ్ అవుతోంది... మాట్లాడండి"
-                        : "Listening... Speak now"
-                      : language === "Telugu"
+              <div className="voice-control-wrapper">
+                <button
+                  type="button"
+                  className={`voice-button ${isListening ? "listening" : ""} ${recordingState === "transcribing" ? "transcribing" : ""}`}
+                  onClick={startVoiceInput}
+                  disabled={recordingState === "requesting_permission" || recordingState === "transcribing"}
+                  aria-label={
+                    recordingState === "recording"
+                      ? language === "Telugu" ? "రికార్డింగ్ ఆపి పంపండి" : "Stop and transcribe"
+                      : recordingState === "transcribing"
+                      ? language === "Telugu" ? "వాయిస్ ప్రాసెస్ అవుతోంది" : "Processing speech"
+                      : language === "Telugu" ? "మీ ప్రశ్నను మాట్లాడండి" : "Speak your question"
+                  }
+                >
+                  <span className="mic-icon">
+                    {recordingState === "recording" ? (
+                      <span className="recording-indicator" aria-hidden="true">
+                        <span className="recording-wave-bar"></span>
+                        <span className="recording-wave-bar"></span>
+                        <span className="recording-wave-bar"></span>
+                      </span>
+                    ) : recordingState === "transcribing" ? (
+                      "⏳"
+                    ) : (
+                      "🎙️"
+                    )}
+                  </span>
+                  <span>
+                    <strong>
+                      {recordingState === "recording"
+                        ? `${language === "Telugu" ? "రికార్డింగ్ ఆపి పంపండి" : "Stop and transcribe"} (${formatDuration(recordingDuration)} / 00:30)`
+                        : recordingState === "transcribing"
+                        ? language === "Telugu"
+                          ? "వాయిస్ ప్రాసెస్ అవుతోంది..."
+                          : "Transcribing speech..."
+                        : recordingState === "requesting_permission"
+                        ? language === "Telugu"
+                          ? "మైక్రోఫోన్ అనుమతించండి..."
+                          : "Allow microphone..."
+                        : language === "Telugu"
                         ? "మీ ప్రశ్నను మాట్లాడండి"
                         : "Speak your question"}
-                  </strong>
-                  <small>
-                    {isListening
-                      ? language === "Telugu"
-                        ? "రికార్డింగ్ ఆపడానికి తాకండి"
-                        : "Tap to stop recording"
-                      : language === "Telugu"
+                    </strong>
+                    <small>
+                      {recordingState === "recording"
+                        ? language === "Telugu"
+                          ? "టెక్స్ట్‌గా మార్చడానికి తాకండి"
+                          : "Tap to finish and transcribe"
+                        : recordingState === "transcribing"
+                        ? language === "Telugu"
+                          ? "AI ద్వారా గుర్తిస్తున్నాము"
+                          : "Converting speech to text"
+                        : language === "Telugu"
                         ? "వాయిస్ ఉపయోగించి అడగడానికి తాకండి"
                         : "Tap to ask using your voice"}
-                  </small>
-                </span>
-              </button>
+                    </small>
+                  </span>
+                </button>
+
+                {(recordingState === "recording" || recordingState === "transcribing" || recordingState === "requesting_permission") && (
+                  <button
+                    type="button"
+                    className="voice-cancel-button"
+                    onClick={cancelVoiceInput}
+                    aria-label={language === "Telugu" ? "రికార్డింగ్ రద్దు చేయండి" : "Cancel voice input"}
+                    title={language === "Telugu" ? "రద్దు చేయండి" : "Cancel"}
+                  >
+                    ✕ {language === "Telugu" ? "రద్దు చేయండి" : "Cancel"}
+                  </button>
+                )}
+              </div>
 
               {voiceMessage && (
                 <p className="voice-notice" role="status">

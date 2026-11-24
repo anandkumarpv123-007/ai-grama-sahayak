@@ -24,6 +24,7 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
   const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isPlayingRef = useRef<boolean>(false);
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const requestSeqRef = useRef<number>(0);
 
   const isTe = language === "Telugu";
   const langCode: "te" | "en" = isTe ? "te" : "en";
@@ -41,6 +42,7 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
 
   const stopAudio = useCallback(() => {
     isCancelledRef.current = true;
+    requestSeqRef.current++;
     clearLoadingTimer();
 
     if (abortControllerRef.current) {
@@ -73,24 +75,31 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
     setIsLoading(false);
   }, []);
 
+  // Stop audio on cleanup when language changes or component unmounts
   useEffect(() => {
     return () => {
       stopAudio();
     };
-  }, [stopAudio]);
+  }, [language, stopAudio]);
 
   const playBrowserSpeechFallback = useCallback(
-    (textToSpeak: string, noticePrefix?: string) => {
+    (textToSpeak: string, noticePrefix?: string, isServerError: boolean = false) => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) {
         clearLoadingTimer();
         setIsLoading(false);
         isPlayingRef.current = false;
         setIsPlaying(false);
-        setStatusMessage(
-          isTe
-            ? "ఈ బ్రౌజర్‌లో వాయిస్ ప్లేబ్యాక్ అందుబాటులో లేదు."
-            : "Voice synthesis is not supported in this browser."
-        );
+        if (isServerError) {
+          setStatusMessage(
+            isTe ? "వాయిస్ సర్వర్ అందుబాటులో లేదు." : "Voice server is unavailable."
+          );
+        } else {
+          setStatusMessage(
+            isTe
+              ? "ఈ బ్రౌజర్‌లో వాయిస్ ప్లేబ్యాక్ అందుబాటులో లేదు."
+              : "Voice synthesis is not supported in this browser."
+          );
+        }
         return;
       }
 
@@ -107,15 +116,19 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
         const selection = selectBrowserVoice(voices, isTe);
 
         // If browser lacks a suitable speech voice (especially for Telugu),
-        // show a clear user-facing error instead of pretending playback succeeded
+        // show an honest server notice if backend failed, or clear voice pack notice if device lacks voice
         if (isTe && !selection.hasGenuineVoice) {
           clearLoadingTimer();
           setIsLoading(false);
           isPlayingRef.current = false;
           setIsPlaying(false);
-          setStatusMessage(
-            "ఈ పరికరంలో తెలుగు వాయిస్ ప్యాక్ లేదు. (డివైజ్ సెట్టింగ్స్‌లో ఇన్స్టాల్ చేయండి)"
-          );
+          if (isServerError) {
+            setStatusMessage("వాయిస్ సర్వర్ అందుబాటులో లేదు.");
+          } else {
+            setStatusMessage(
+              "ఈ పరికరంలో తెలుగు వాయిస్ ప్యాక్ లేదు. (డివైజ్ సెట్టింగ్స్‌లో ఇన్స్టాల్ చేయండి)"
+            );
+          }
           return;
         }
 
@@ -262,22 +275,25 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
       return;
     }
 
+    const currentSeq = ++requestSeqRef.current;
     isCancelledRef.current = false;
     setIsLoading(true);
-    setStatusMessage(null);
+    setStatusMessage(isTe ? "ఆడియో సిద్ధమవుతోంది..." : "Generating audio...");
 
     clearLoadingTimer();
-    // 5-second watchdog timer: resets loading state if server never responds
-    // Guarded to never interrupt or stop audio if playback has already begun
+    // 55-second frontend synthesis timeout: exceeds the 45s backend synthesis deadline by a 10s network margin
     loadingTimerRef.current = setTimeout(() => {
-      if (isPlayingRef.current) {
+      if (isPlayingRef.current || isCancelledRef.current || currentSeq !== requestSeqRef.current) {
         return;
       }
       setIsLoading(false);
-      setStatusMessage(
-        isTe ? "ఆడియో లోడింగ్ సమయం ముగిసింది." : "Audio request timed out."
+      abortControllerRef.current?.abort();
+      playBrowserSpeechFallback(
+        prepared.textToSpeak,
+        isTe ? "ఆడియో సమయం ముగిసింది — పరికర ఆడియో ద్వారా" : "Audio synthesis timed out — using device audio",
+        true
       );
-    }, 5000);
+    }, 55000);
 
     const prepared = prepareSpeechText(text, 3800, isTe);
     if (!prepared.textToSpeak.trim()) {
@@ -299,7 +315,7 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
         controller.signal
       );
 
-      if (isCancelledRef.current) {
+      if (isCancelledRef.current || currentSeq !== requestSeqRef.current) {
         clearLoadingTimer();
         setIsLoading(false);
         return;
@@ -311,6 +327,11 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
         audioRef.current = audio;
 
         audio.onplay = () => {
+          if (isCancelledRef.current || currentSeq !== requestSeqRef.current) {
+            audio.pause();
+            audio.src = "";
+            return;
+          }
           clearLoadingTimer();
           isPlayingRef.current = true;
           setIsLoading(false);
@@ -319,6 +340,8 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
             setStatusMessage(
               isTe ? "పూర్తి వివరాలు స్క్రీన్‌పై ఉన్నాయి" : "Full details on screen"
             );
+          } else {
+            setStatusMessage(null);
           }
         };
 
@@ -330,7 +353,7 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
 
         audio.onerror = () => {
           clearLoadingTimer();
-          if (!isCancelledRef.current) {
+          if (!isCancelledRef.current && currentSeq === requestSeqRef.current) {
             playBrowserSpeechFallback(
               prepared.textToSpeak,
               isTe ? "పరికర ఆడియో ద్వారా ప్లే అవుతోంది" : "Playing via device audio"
@@ -341,17 +364,30 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
         try {
           await audio.play();
           return;
-        } catch {
-          if (!isCancelledRef.current) {
-            playBrowserSpeechFallback(
-              prepared.textToSpeak,
-              isTe ? "పరికర ఆడియో ద్వారా ప్లే అవుతోంది" : "Playing via device audio"
-            );
+        } catch (playErr: unknown) {
+          clearLoadingTimer();
+          if (isCancelledRef.current || currentSeq !== requestSeqRef.current) {
+            return;
           }
+          const errName = playErr instanceof Error ? playErr.name : "";
+          if (errName === "NotAllowedError") {
+            // Autoplay blocked by browser: keep audio ready and prompt user to click
+            setIsLoading(false);
+            setIsPlaying(false);
+            setStatusMessage(
+              isTe ? "ఆడియో ప్లే చేయడానికి మళ్ళీ క్లిక్ చేయండి" : "Click Listen to play audio"
+            );
+            return;
+          }
+
+          playBrowserSpeechFallback(
+            prepared.textToSpeak,
+            isTe ? "పరికర ఆడియో ద్వారా ప్లే అవుతోంది" : "Playing via device audio"
+          );
           return;
         }
       } else {
-        if (!isCancelledRef.current) {
+        if (!isCancelledRef.current && currentSeq === requestSeqRef.current) {
           playBrowserSpeechFallback(
             prepared.textToSpeak,
             isTe ? "పరికర ఆడియో ద్వారా ప్లే అవుతోంది" : "Playing via device audio"
@@ -360,35 +396,37 @@ export default function AudioSpeakButton({ text, language }: AudioSpeakButtonPro
       }
     } catch (err: unknown) {
       clearLoadingTimer();
-      if (isCancelledRef.current) {
+      if (isCancelledRef.current || currentSeq !== requestSeqRef.current) {
         setIsLoading(false);
         return;
       }
 
       let notice = isTe ? "పరికర ఆడియో ద్వారా ప్లే అవుతోంది" : "Playing via device audio";
+      let isServerError = true;
       if (err instanceof ApiException) {
         if (err.status === 503) {
           notice = isTe ? "సర్వర్ ఆఫ్‌లైన్ — పరికర ఆడియో ద్వారా" : "Online voice unavailable (503) — using device audio";
+          isServerError = true;
         } else if (err.status === 400) {
           notice = isTe ? "పరికర ఆడియో ద్వారా ప్లే అవుతోంది" : "Playing via device audio";
+          isServerError = false;
         }
       }
 
-      playBrowserSpeechFallback(prepared.textToSpeak, notice);
+      playBrowserSpeechFallback(prepared.textToSpeak, notice, isServerError);
     }
   };
 
   return (
     <div className="audio-speak-container">
       <button
-        className={`audio-speak-btn ${isPlaying ? "playing" : ""}`}
+        className={`audio-speak-btn ${isPlaying ? "playing" : ""} ${isLoading ? "loading" : ""}`}
         onClick={handleToggleSpeak}
-        disabled={isLoading}
-        aria-label={isPlaying ? "Stop speech" : "Listen to response"}
-        title={isPlaying ? "Stop audio" : "Listen to audio response"}
+        aria-label={isPlaying ? "Stop speech" : isLoading ? "Cancel audio generation" : "Listen to response"}
+        title={isPlaying ? "Stop audio" : isLoading ? "Cancel audio generation" : "Listen to audio response"}
       >
         {isLoading ? (
-          <span>⏳ {isTe ? "సిద్ధమవుతోంది..." : "Loading..."}</span>
+          <span>⏹️ {isTe ? "ఆపండి" : "Stop"}</span>
         ) : isPlaying ? (
           <span>⏹️ {isTe ? "ఆపండి" : "Stop"}</span>
         ) : (

@@ -4,6 +4,8 @@
  * Adheres strictly to docs/api_contracts.md
  */
 
+import { getAudioFilenameAndType } from "./voiceUtils";
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "http://localhost:8000";
 
@@ -176,8 +178,14 @@ export async function transcribeAudio(
   signal?: AbortSignal
 ): Promise<VoiceTranscribeResponse> {
   const url = `${API_BASE_URL}/api/voice/transcribe`;
+  const { filename, mimeType } = getAudioFilenameAndType(audioBlob);
+  // Ensure the audio blob carries a clean base MIME type (e.g. 'audio/webm' without ';codecs=opus')
+  const normalizedBlob =
+    audioBlob.type !== mimeType
+      ? new Blob([audioBlob], { type: mimeType })
+      : audioBlob;
   const formData = new FormData();
-  formData.append("file", audioBlob, "recording.wav");
+  formData.append("file", normalizedBlob, filename);
   formData.append("language", language);
 
   const res = await fetch(url, {
