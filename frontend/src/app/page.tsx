@@ -13,6 +13,7 @@ import NearbyServices from "../components/NearbyServices";
 import GrievanceDrafting from "../components/GrievanceDrafting";
 import AudioSpeakButton from "../components/AudioSpeakButton";
 import SchemeEligibility from "../components/SchemeEligibility";
+import SafeMarkdown from "../components/SafeMarkdown";
 
 type SpeechRecognitionAlternativeLike = {
   transcript: string;
@@ -59,34 +60,109 @@ type ChatMessage = {
   isError?: boolean;
 };
 
-const categories = [
+interface SpecialistAssistant {
+  id: "agriculture" | "healthcare" | "education" | "schemes";
+  title: string;
+  titleEn: string;
+  titleTe: string;
+  descriptionEn: string;
+  descriptionTe: string;
+  icon: string;
+  color: string;
+  badgeEn: string;
+  badgeTe: string;
+  suggestedQuestionsEn: string[];
+  suggestedQuestionsTe: string[];
+}
+
+const SPECIALIST_ASSISTANTS: SpecialistAssistant[] = [
   {
-    title: "Agriculture",
-    assistantId: "agriculture" as const,
-    description: "Farming, crops, pests & weather guidance",
-    icon: "🌾",
-    color: "agriculture",
-  },
-  {
-    title: "Healthcare",
-    assistantId: "healthcare" as const,
-    description: "Health information & healthcare guidance",
-    icon: "🩺",
-    color: "healthcare",
-  },
-  {
-    title: "Education",
-    assistantId: "education" as const,
-    description: "Scholarships, learning & educational support",
-    icon: "📚",
-    color: "education",
-  },
-  {
+    id: "schemes",
     title: "Government Schemes",
-    assistantId: "schemes" as const,
-    description: "Benefits, eligibility & application guidance",
+    titleEn: "Government Welfare Schemes",
+    titleTe: "ప్రభుత్వ సంక్షేమ పథకాలు",
+    descriptionEn: "Old-age pensions, farmer income support, healthcare coverage & welfare eligibility",
+    descriptionTe: "వృద్ధాప్య పింఛన్లు, రైతు భరోసా, ఆరోగ్యశ్రీ & సంక్షేమ పథకాల అర్హత పరిశీలన",
     icon: "🏛️",
     color: "schemes",
+    badgeEn: "Direct Benefit Transfers",
+    badgeTe: "ప్రత్యక్ష నగదు బదిలీ",
+    suggestedQuestionsEn: [
+      "Who is eligible for NTR Bharosa Old Age Pension?",
+      "How to complete PM-KISAN e-KYC?",
+      "What are the benefits of Dr. NTR Vaidya Seva?",
+    ],
+    suggestedQuestionsTe: [
+      "ఎన్టీఆర్ భరోసా వృద్ధాప్య పింఛనుకు ఎవరు అర్హులు?",
+      "పీఎం-కిసాన్ ఈ-కేవైసీ ఎలా పూర్తి చేయాలి?",
+      "డాక్టర్ ఎన్టీఆర్ వైద్య సేవ ప్రయోజనాలు ఏమిటి?",
+    ],
+  },
+  {
+    id: "agriculture",
+    title: "Agriculture",
+    titleEn: "Agriculture & Farming Support",
+    titleTe: "వ్యవసాయం & సాగుబడి సమాచారం",
+    descriptionEn: "Crop protection, pest management, weather updates & Rythu Bharosa Kendrams",
+    descriptionTe: "పంటల రక్షణ, తెగుళ్ళ నివారణ, వాతావరణ సమాచారం & రైతు భరోసా కేంద్రాలు (RBK)",
+    icon: "🌾",
+    color: "agriculture",
+    badgeEn: "Farmer Advisories",
+    badgeTe: "రైతు సలహాలు",
+    suggestedQuestionsEn: [
+      "How to prevent blast disease in paddy crop?",
+      "What services are offered at Rythu Bharosa Kendram (RBK)?",
+      "What are the seasonal MSP procurement guidelines?",
+    ],
+    suggestedQuestionsTe: [
+      "వరి పంటలో అగ్గితెగులు మరియు కాండం తొలుచు పురుగు నివారణ ఎలా?",
+      "రైతు భరోసా కేంద్రం (RBK) ద్వారా ఎలాంటి సేవలు అందుతాయి?",
+      "ప్రభుత్వ కనీస మద్దతు ధర (MSP) వివరాలు ఏమిటి?",
+    ],
+  },
+  {
+    id: "healthcare",
+    title: "Healthcare",
+    titleEn: "Healthcare & Aarogyasri Guidance",
+    titleTe: "ఆరోగ్యం & ఆరోగ్యశ్రీ సహాయం",
+    descriptionEn: "Cashless hospital treatments, PHC locator, maternal care & health cards",
+    descriptionTe: "ఆసుపత్రుల్లో ఉచిత నగదు రహిత చికిత్స, పీహెచ్‌సీలు & ఆరోగ్యశ్రీ కార్డు సమాచారం",
+    icon: "🩺",
+    color: "healthcare",
+    badgeEn: "Health Services",
+    badgeTe: "ఆరోగ్య సేవలు",
+    suggestedQuestionsEn: [
+      "Which treatments are covered under Dr. NTR Vaidya Seva?",
+      "Where is the nearest Government Hospital or PHC?",
+      "How to avail maternal health benefits under government schemes?",
+    ],
+    suggestedQuestionsTe: [
+      "డాక్టర్ ఎన్టీఆర్ వైద్య సేవ కింద ఏయే చికిత్సలు ఉచితంగా లభిస్తాయి?",
+      "సమీప ప్రభుత్వ ఆసుపత్రి లేదా ప్రాథమిక ఆరోగ్య కేంద్రం ఎక్కడ ఉంది?",
+      "తల్లి మరియు బిడ్డ సంక్షేమ పథకాల వివరాలు ఏమిటి?",
+    ],
+  },
+  {
+    id: "education",
+    title: "Education",
+    titleEn: "Education & Skilling Support",
+    titleTe: "విద్య & నైపుణ్యాభివృద్ధి",
+    descriptionEn: "Student scholarships, school admissions, fee reimbursement & skilling courses",
+    descriptionTe: "విద్యార్థి వేతనాలు, పాఠశాల ప్రవేశాలు, ఫీజు రీయింబర్స్‌మెంట్ & నైపుణ్య శిక్షణ",
+    icon: "📚",
+    color: "education",
+    badgeEn: "Scholarships & Schools",
+    badgeTe: "స్కాలర్‌షిప్‌లు & విద్య",
+    suggestedQuestionsEn: [
+      "What are the guidelines for Thalliki Vandanam / Amma Vodi?",
+      "How to apply for post-matric student scholarships in AP?",
+      "What free technical skill training programs are offered by APSSDC?",
+    ],
+    suggestedQuestionsTe: [
+      "తల్లికి వందనం / జగనన్న అమ్మ ఒడి మార్గదర్శకాలు ఏమిటి?",
+      "పోస్ట్ మెట్రిక్ స్కాలర్‌షిప్ కొరకు ఎలా దరఖాస్తు చేసుకోవాలి?",
+      "APSSDC ద్వారా అందుబాటులో ఉన్న ఉచిత నైపుణ్య కోర్సులు ఏమిటి?",
+    ],
   },
 ];
 
@@ -104,7 +180,9 @@ export type VoiceRecordingState =
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("chat");
   const [language, setLanguage] = useState("Telugu");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const isTe = language === "Telugu";
+
+  const [selectedCategory, setSelectedCategory] = useState<string>("schemes");
   const [showEligibility, setShowEligibility] = useState(false);
   const [question, setQuestion] = useState("");
   const [voiceMessage, setVoiceMessage] = useState("");
@@ -135,7 +213,7 @@ export default function Home() {
 
   // Automatically scroll to the latest chat content
   useEffect(() => {
-    if (activeTab === "chat") {
+    if (activeTab === "chat" && messages.length > 0) {
       chatEndRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "end",
@@ -155,6 +233,7 @@ export default function Home() {
       });
       mediaStreamRef.current = null;
     }
+    mediaRecorderRef.current = null;
   }, []);
 
   const clearRecordingTimers = useCallback(() => {
@@ -168,11 +247,122 @@ export default function Home() {
     }
   }, []);
 
-  // Cancel recording or in-flight transcription
-  const cancelVoiceInput = useCallback(() => {
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupMediaStream();
+      clearRecordingTimers();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {
+          // ignore
+        }
+      }
+      if (voiceAbortControllerRef.current) {
+        voiceAbortControllerRef.current.abort();
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [cleanupMediaStream, clearRecordingTimers]);
+
+  // Fallback: Browser Web Speech API
+  const startBrowserSpeechRecognitionFallback = () => {
+    const windowWithSpeech = window as WindowWithSpeechRecognition;
+    const SpeechRecognition =
+      windowWithSpeech.SpeechRecognition ||
+      windowWithSpeech.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setRecordingState("error");
+      setVoiceMessage(
+        isTe
+          ? "మీ బ్రౌజర్‌లో వాయిస్ రికార్డింగ్ సదుపాయం అందుబాటులో లేదు. దయచేసి టైప్ చేయండి."
+          : "Voice recognition is not supported in this browser. Please type your query."
+      );
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = isTe ? "te-IN" : "en-IN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setRecordingState("recording");
+        setRecordingDuration(0);
+        setVoiceMessage(
+          isTe
+            ? "బ్రౌజర్ వాయిస్ రికార్డింగ్ ప్రారంభమైంది... మాట్లాడండి."
+            : "Listening via device microphone... Please speak now."
+        );
+
+        recordingTimerRef.current = setInterval(() => {
+          setRecordingDuration((prev) => prev + 1);
+        }, 1000);
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEventLike) => {
+        clearRecordingTimers();
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setQuestion(transcript);
+          setRecordingState("transcribed");
+          setVoiceMessage(
+            isTe
+              ? `గుర్తించబడిన ప్రశ్న: "${transcript}"`
+              : `Captured query: "${transcript}"`
+          );
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorLike) => {
+        clearRecordingTimers();
+        setRecordingState("error");
+        if (event.error === "not-allowed") {
+          setVoiceMessage(
+            isTe
+              ? "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బ్రౌజర్ అనుమతులు ఇవ్వండి."
+              : "Microphone permission denied. Please allow microphone access in your browser."
+          );
+        } else if (event.error === "no-speech") {
+          setVoiceMessage(
+            isTe
+              ? "ఎలాంటి శబ్దం గుర్తించబడలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి."
+              : "No speech detected. Please speak closer to your microphone."
+          );
+        } else {
+          setVoiceMessage(
+            isTe
+              ? `వాయిస్ గుర్తింపు లోపం: ${event.error}`
+              : `Voice error: ${event.error}`
+          );
+        }
+      };
+
+      recognition.onend = () => {
+        clearRecordingTimers();
+        setRecordingState((prev) => (prev === "recording" ? "idle" : prev));
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setRecordingState("error");
+      setVoiceMessage(
+        isTe
+          ? "మైక్రోఫోన్ ప్రారంభించడంలో సమస్య ఏర్పడింది."
+          : "Could not initialize microphone."
+      );
+    }
+  };
+
+  const cancelVoiceInput = () => {
     isVoiceCancelledRef.current = true;
-    voiceRequestSeqRef.current++;
-    clearRecordingTimers();
+    voiceRequestSeqRef.current += 1;
 
     if (voiceAbortControllerRef.current) {
       voiceAbortControllerRef.current.abort();
@@ -181,14 +371,11 @@ export default function Home() {
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       try {
-        mediaRecorderRef.current.onstop = null;
         mediaRecorderRef.current.stop();
       } catch {
         // ignore
       }
     }
-    mediaRecorderRef.current = null;
-    cleanupMediaStream();
 
     if (recognitionRef.current) {
       try {
@@ -198,191 +385,55 @@ export default function Home() {
       }
     }
 
+    cleanupMediaStream();
+    clearRecordingTimers();
+    audioChunksRef.current = [];
     setRecordingState("cancelled");
     setRecordingDuration(0);
-    setVoiceMessage(
-      language === "Telugu"
-        ? "రికార్డింగ్ రద్దు చేయబడింది."
-        : "Recording cancelled."
-    );
-  }, [clearRecordingTimers, cleanupMediaStream, language]);
+    setVoiceMessage(isTe ? "వాయిస్ రికార్డింగ్ రద్దు చేయబడింది." : "Voice recording cancelled.");
+  };
 
-  // Clean up any in-flight requests when the component unmounts
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      cancelVoiceInput();
-    };
-  }, [cancelVoiceInput]);
-
-  // If user switches language while recording, cancel cleanly on cleanup
-  useEffect(() => {
-    return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        cancelVoiceInput();
-      }
-    };
-  }, [language, cancelVoiceInput]);
-
-  // Stop recording and package audio for backend transcription
-  const stopAndTranscribe = useCallback(() => {
-    clearRecordingTimers();
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch {
-        cancelVoiceInput();
-      }
-    } else if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {
-        // ignore
-      }
-    }
-  }, [clearRecordingTimers, cancelVoiceInput]);
-
-  // Fallback: Browser Web Speech API
-  const startBrowserSpeechRecognitionFallback = useCallback(() => {
-    const browserWindow = window as WindowWithSpeechRecognition;
-    const SpeechRecognitionAPI =
-      browserWindow.SpeechRecognition ||
-      browserWindow.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionAPI) {
-      setRecordingState("error");
-      setVoiceMessage(
-        language === "Telugu"
-          ? "ఈ బ్రౌజర్‌లో వాయిస్ రికార్డింగ్ అందుబాటులో లేదు. దయచేసి మీ ప్రశ్నను టైప్ చేయండి."
-          : "Speech recognition is not supported in this browser. Please type your question."
-      );
-      return;
-    }
-
-    const recognition = new SpeechRecognitionAPI();
-    recognition.lang = language === "Telugu" ? "te-IN" : "en-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setRecordingState("recording");
-      setVoiceMessage(
-        language === "Telugu"
-          ? "పరికర వాయిస్ ద్వారా వింటున్నాము... మాట్లాడండి 🎤"
-          : "Listening via device voice... Speak your question now 🎤"
-      );
-    };
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setQuestion(transcript);
-      setRecordingState("transcribed");
-      setVoiceMessage(
-        language === "Telugu"
-          ? "మీ ప్రశ్న గుర్తించబడింది! అవసరమైతే సవరించి పంపండి. ✓"
-          : "Your speech was converted to text successfully! You can edit before sending. ✓"
-      );
-    };
-
-    recognition.onerror = (event) => {
-      setRecordingState("error");
-      if (event.error === "not-allowed") {
-        setVoiceMessage(
-          language === "Telugu"
-            ? "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్రోఫోన్ అనుమతించండి."
-            : "Microphone permission denied. Please allow microphone access in your browser."
-        );
-      } else if (event.error === "no-speech") {
-        setVoiceMessage(
-          language === "Telugu"
-            ? "వాయిస్ ఏమీ గుర్తించబడలేదు. మళ్ళీ ప్రయత్నించండి."
-            : "No speech detected. Please tap and try again."
-        );
-      } else {
-        setVoiceMessage(
-          language === "Telugu"
-            ? "వాయిస్ గుర్తింపు విఫలమైంది. దయచేసి మీ ప్రశ్నను టైప్ చేయండి."
-            : "Speech recognition failed. Please type your question."
-        );
-      }
-    };
-
-    recognition.onend = () => {
-      setRecordingState((prev) => (prev === "recording" ? "idle" : prev));
-    };
-
-    recognitionRef.current = recognition;
-
-    try {
-      recognition.start();
-    } catch {
-      setRecordingState("error");
-      setVoiceMessage(
-        language === "Telugu"
-          ? "మైక్రోఫోన్ ప్రారంభం కాలేదు. దయచేసి టైప్ చేయండి."
-          : "Unable to start microphone. Please type your question."
-      );
-    }
-  }, [language]);
-
-  /**
-   * Primary Voice Input: MediaRecorder -> Blob -> POST /api/voice/transcribe
-   * Never automatically submits; allows citizen to review/edit recognized question first.
-   */
+  // Main voice input handler
   const startVoiceInput = async () => {
-    // If currently recording, tapping the main button stops and transcribes
     if (recordingState === "recording") {
-      stopAndTranscribe();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+        return;
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        return;
+      }
       return;
-    }
-
-    if (recordingState === "transcribing" || recordingState === "requesting_permission") {
-      return; // Prevent duplicate rapid requests
     }
 
     isVoiceCancelledRef.current = false;
+    setVoiceMessage("");
     setRecordingDuration(0);
-    clearRecordingTimers();
-    const currentSeq = ++voiceRequestSeqRef.current;
+    setRecordingState("requesting_permission");
 
-    // Check MediaRecorder and getUserMedia support
-    if (
-      typeof navigator !== "undefined" &&
-      navigator.mediaDevices &&
-      typeof navigator.mediaDevices.getUserMedia === "function" &&
-      typeof window !== "undefined" &&
-      typeof window.MediaRecorder !== "undefined"
-    ) {
-      setRecordingState("requesting_permission");
-      setVoiceMessage(
-        language === "Telugu"
-          ? "మైక్రోఫోన్ అనుమతి కోరుతున్నాము..."
-          : "Requesting microphone permission..."
-      );
-
+    if (navigator.mediaDevices && typeof MediaRecorder !== "undefined") {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: {
+            channelCount: 1,
+            sampleRate: 16000,
             echoCancellation: true,
             noiseSuppression: true,
-            autoGainControl: true,
           },
         });
 
-        if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
+        if (isVoiceCancelledRef.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
 
         mediaStreamRef.current = stream;
-        audioChunksRef.current = [];
-
-        const selectedMime = getSupportedMimeType();
-        const options: MediaRecorderOptions = selectedMime ? { mimeType: selectedMime } : {};
+        const mimeType = getSupportedMimeType();
+        const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
         const recorder = new MediaRecorder(stream, options);
         mediaRecorderRef.current = recorder;
+        audioChunksRef.current = [];
 
         recorder.ondataavailable = (e) => {
           if (e.data && e.data.size > 0) {
@@ -391,117 +442,110 @@ export default function Home() {
         };
 
         recorder.onstart = () => {
-          if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
-            recorder.stop();
-            return;
-          }
           setRecordingState("recording");
           setRecordingDuration(0);
           setVoiceMessage(
-            language === "Telugu"
-              ? "రికార్డింగ్ అవుతోంది... మాట్లాడండి (గరిష్టంగా 30 సెకన్లు)"
-              : "Recording... Speak your question now (max 30s)"
+            isTe
+              ? "రికార్డింగ్ అవుతోంది... మీ ప్రశ్నను స్పష్టంగా మాట్లాడండి (గరిష్టంగా 30 సెకన్లు)."
+              : "Recording... Speak your question clearly (max 30s)."
           );
 
-          // 1-second interval for duration timer
           recordingTimerRef.current = setInterval(() => {
-            setRecordingDuration((prev) => {
-              const next = prev + 1;
-              if (next >= 30) {
-                stopAndTranscribe();
-              }
-              return next;
-            });
+            setRecordingDuration((prev) => prev + 1);
           }, 1000);
 
-          // 30.5-second hard safety limit
           maxDurationTimerRef.current = setTimeout(() => {
-            stopAndTranscribe();
-          }, 30500);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+              mediaRecorderRef.current.stop();
+            }
+          }, 30000);
         };
 
         recorder.onstop = async () => {
           clearRecordingTimers();
           cleanupMediaStream();
 
-          if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
-            setRecordingState("cancelled");
+          if (isVoiceCancelledRef.current) {
+            audioChunksRef.current = [];
             return;
           }
 
-          const chunks = audioChunksRef.current;
-          if (!chunks || chunks.length === 0) {
+          const currentChunks = [...audioChunksRef.current];
+          audioChunksRef.current = [];
+
+          if (currentChunks.length === 0) {
             setRecordingState("error");
             setVoiceMessage(
-              language === "Telugu"
-                ? "రికార్డింగ్‌లో వాయిస్ ఏమీ రికార్డ్ కాలేదు. మళ్ళీ ప్రయత్నించండి."
-                : "No audio was recorded. Please try speaking again."
+              isTe
+                ? "శబ్దం రికార్డు కాలేదు. దయచేసి మళ్ళీ మాట్లాడండి."
+                : "No audio captured. Please try speaking again."
             );
             return;
           }
 
-          const actualMime = recorder.mimeType || selectedMime || "audio/webm";
-          const recordedBlob = new Blob(chunks, { type: actualMime });
+          const actualMime = recorder.mimeType || mimeType || "audio/webm";
+          const audioBlob = new Blob(currentChunks, { type: actualMime });
 
-          // Reject empty or corrupt recordings under 500 bytes
-          if (recordedBlob.size < 500) {
+          if (audioBlob.size < 100) {
             setRecordingState("error");
             setVoiceMessage(
-              language === "Telugu"
-                ? "రికార్డింగ్ చాలా చిన్నదిగా ఉంది. దయచేసి స్పష్టంగా మాట్లాడండి."
-                : "Recording too brief. Please speak clearly."
+              isTe
+                ? "ఆడియో చాలా చిన్నదిగా ఉంది. దయచేసి పూర్తి ప్రశ్నను మాట్లాడండి."
+                : "Audio was too short. Please speak your full question."
             );
             return;
           }
 
           setRecordingState("transcribing");
           setVoiceMessage(
-            language === "Telugu"
-              ? "మీ వాయిస్‌ను టెక్స్ట్‌గా మారుస్తున్నాము..."
-              : "Transcribing your speech with AI..."
+            isTe
+              ? "వాయిస్ ప్రాసెస్ అవుతోంది... దయచేసి వేచి ఉండండి."
+              : "Transcribing your question with Sarvam AI..."
           );
 
+          const seq = ++voiceRequestSeqRef.current;
           const controller = new AbortController();
           voiceAbortControllerRef.current = controller;
 
           try {
-            const langCode = language === "Telugu" ? "te" : "en";
-            const res = await transcribeAudio(recordedBlob, langCode, controller.signal);
+            const resp = await transcribeAudio(
+              audioBlob,
+              isTe ? "te" : "en",
+              controller.signal
+            );
 
-            if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
-              return;
-            }
+            if (seq !== voiceRequestSeqRef.current || isVoiceCancelledRef.current) return;
 
-            if (res && res.transcribed_text && res.transcribed_text.trim()) {
-              setQuestion(res.transcribed_text.trim());
+            const text = resp ? resp.transcribed_text : "";
+            if (text && text.trim()) {
+              const cleanText = text.trim();
+              setQuestion(cleanText);
               setRecordingState("transcribed");
               setVoiceMessage(
-                language === "Telugu"
-                  ? "మీ ప్రశ్న గుర్తించబడింది! అవసరమైతే సవరించి పంపండి. ✓"
-                  : "Speech recognized! You can review or edit before sending. ✓"
+                isTe
+                  ? `గుర్తించబడిన ప్రశ్న: "${cleanText}"`
+                  : `Transcribed: "${cleanText}"`
               );
             } else {
               setRecordingState("error");
               setVoiceMessage(
-                language === "Telugu"
-                  ? "వాయిస్ స్పష్టంగా గుర్తించబడలేదు. మళ్ళీ మాట్లాడండి లేదా టైప్ చేయండి."
-                  : "Could not transcribe clearly. Please try again or type your question."
+                isTe
+                  ? "వాయిస్ స్పష్టంగా గుర్తించబడలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి."
+                  : "Could not transcribe audio clearly. Please try again."
               );
             }
           } catch (err: unknown) {
-            if (isVoiceCancelledRef.current || currentSeq !== voiceRequestSeqRef.current) {
-              return;
-            }
+            if (seq !== voiceRequestSeqRef.current || isVoiceCancelledRef.current) return;
             setRecordingState("error");
             if (err instanceof ApiException && err.status === 503) {
               setVoiceMessage(
-                language === "Telugu"
-                  ? "వాయిస్ సర్వర్ తాత్కాలికంగా ఆఫ్‌లైన్‌లో ఉంది. పరికర వాయిస్ లేదా టైప్ చేయండి."
-                  : "Voice server offline (503). You can use device voice or type."
+                isTe
+                  ? "వాయిస్ సర్వర్ ప్రస్తుతం అందుబాటులో లేదు (503). మీరు టైప్ చేయవచ్చు."
+                  : "Voice server temporarily offline (503). You can type below."
               );
             } else {
               setVoiceMessage(
-                language === "Telugu"
+                isTe
                   ? "ట్రాన్స్‌క్రిప్షన్ విఫలమైంది. దయచేసి మళ్ళీ ప్రయత్నించండి."
                   : "Transcription failed. Please try again or type your question."
               );
@@ -518,39 +562,38 @@ export default function Home() {
         if (errName === "NotAllowedError" || errName === "PermissionDeniedError") {
           setRecordingState("error");
           setVoiceMessage(
-            language === "Telugu"
-              ? "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో మైక్రోఫోన్ అనుమతించండి."
+            isTe
+              ? "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బ్రౌజర్ సెట్టింగ్స్‌లో అనుమతించండి."
               : "Microphone permission denied. Please allow microphone access in your browser."
           );
         } else if (errName === "NotFoundError" || errName === "DevicesNotFoundError") {
           setRecordingState("error");
           setVoiceMessage(
-            language === "Telugu"
+            isTe
               ? "మీ పరికరంలో మైక్రోఫోన్ కనుగొనబడలేదు."
               : "No microphone detected on your device."
           );
         } else {
-          // Fall back to Web Speech API
           startBrowserSpeechRecognitionFallback();
         }
         return;
       }
     }
 
-    // MediaRecorder unsupported in browser: fall back to Web Speech API
     startBrowserSpeechRecognitionFallback();
   };
 
-  // Map category title to backend assistant identifier
+  // Map active assistant id
   const getAssistantId = (): "agriculture" | "healthcare" | "education" | "schemes" => {
-    const match = categories.find((c) => c.title === selectedCategory);
-    return match ? match.assistantId : "schemes";
+    const match = SPECIALIST_ASSISTANTS.find(
+      (c) => c.id === selectedCategory || c.title === selectedCategory
+    );
+    return match ? match.id : "schemes";
   };
 
-  // Map language to backend contract code ('te' or 'en')
-  const getLanguageCode = (): "te" | "en" => {
-    return language === "Telugu" ? "te" : "en";
-  };
+  const currentAssistant =
+    SPECIALIST_ASSISTANTS.find((a) => a.id === selectedCategory || a.title === selectedCategory) ||
+    SPECIALIST_ASSISTANTS[0];
 
   const handleSendMessage = async (textToSend?: string) => {
     const rawQuestion = textToSend || question;
@@ -558,7 +601,6 @@ export default function Home() {
 
     if (!trimmedQuestion || isThinking) return;
 
-    // Abort previous in-flight request if any
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -572,11 +614,7 @@ export default function Home() {
       text: trimmedQuestion,
     };
 
-    setMessages((previousMessages) => [
-      ...previousMessages,
-      userMessage,
-    ]);
-
+    setMessages((prev) => [...prev, userMessage]);
     setQuestion("");
     setVoiceMessage("");
     setIsThinking(true);
@@ -588,17 +626,15 @@ export default function Home() {
         {
           message: trimmedQuestion,
           assistant: getAssistantId(),
-          language: getLanguageCode(),
+          language: isTe ? "te" : "en",
           state: "Andhra Pradesh",
           conversation_id: conversationIdRef.current,
         },
         controller.signal
       );
 
-      // Verify request wasn't cancelled by New Chat
       if (controller.signal.aborted) return;
 
-      // Update multi-turn conversation ID
       if (response.conversation_id) {
         conversationIdRef.current = response.conversation_id;
       }
@@ -612,52 +648,39 @@ export default function Home() {
         followUps: response.follow_up_questions || [],
       };
 
-      setMessages((previousMessages) => [
-        ...previousMessages,
-        assistantMessage,
-      ]);
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: unknown) {
-      if (controller.signal.aborted) {
-        // Request was intentionally cancelled (e.g., New Chat)
-        return;
-      }
+      if (controller.signal.aborted) return;
 
       lastFailedMessageRef.current = trimmedQuestion;
-
       let errorNotice = "";
+
       if (err instanceof ApiException) {
         errorNotice = `API Error [${err.code}]: ${err.message}`;
       } else {
-        errorNotice =
-          language === "Telugu"
-            ? "బ్యాకెండ్ చాట్ సర్వరు అందుబాటులో లేదు (/api/chat). (Member 1 చాట్ ఆర్కెస్ట్రేషన్ అభివృద్ధి చేస్తున్నారు)."
-            : "Backend chat service is unreachable at /api/chat. (Member 1 develops this endpoint).";
+        errorNotice = isTe
+          ? "బ్యాకెండ్ చాట్ సర్వరు అందుబాటులో లేదు (/api/chat). దయచేసి సర్వరు నడుస్తుందో లేదో తనిఖీ చేయండి."
+          : "Backend chat service is unreachable at /api/chat. Please check backend connection.";
       }
 
       setBackendNotice(errorNotice);
 
-      // Honest service-unavailable message — no fake answers or fabricated advice!
       const unavailableMessage: ChatMessage = {
         id: messageIdCounterRef.current++,
         sender: "assistant",
-        text:
-          language === "Telugu"
-            ? "క్షమించండి, గ్రామ సహాయక్ చాట్ సర్వీస్ ప్రస్తుతం అందుబాటులో లేదు (/api/chat). దయచేసి కాసేపటి తర్వాత 'మళ్లీ ప్రయత్నించండి' బటన్ నొక్కండి."
-            : "The Grama Sahayak chat service is currently unavailable (/api/chat). Please try again in a few moments using the Retry button.",
+        text: isTe
+          ? "క్షమించండి, గ్రామ సహాయక్ చాట్ సర్వీస్ ప్రస్తుతం అందుబాటులో లేదు. దయచేసి కాసేపటి తర్వాత 'మళ్ళీ ప్రయత్నించండి' బటన్ నొక్కండి."
+          : "The Grama Sahayak chat service is currently unavailable. Please try again in a moment using the Retry button.",
         isError: true,
       };
 
-      setMessages((previousMessages) => [
-        ...previousMessages,
-        unavailableMessage,
-      ]);
+      setMessages((prev) => [...prev, unavailableMessage]);
     } finally {
       setIsThinking(false);
       abortControllerRef.current = null;
     }
   };
 
-  // Start a fresh conversation and cancel any pending response
   const handleNewChat = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -675,45 +698,64 @@ export default function Home() {
 
   const handleRetry = () => {
     if (lastFailedMessageRef.current) {
-      const retryText = lastFailedMessageRef.current;
-      handleSendMessage(retryText);
+      handleSendMessage(lastFailedMessageRef.current);
     }
   };
 
   return (
     <main className="home-container">
-      {/* Header */}
+      {/* Credible Civic Platform Header */}
       <header className="site-header">
         <div className="brand">
-          <div className="brand-icon">🌿</div>
-          <div>
-            <h1>AI Grama Sahayak</h1>
-            <p>Your trusted digital assistant</p>
+          <div className="brand-icon" aria-hidden="true">
+            <span>🏛️</span>
+          </div>
+          <div className="brand-text">
+            <div className="brand-title-row">
+              <h1>AI Grama Sahayak</h1>
+              <span className="platform-tag">
+                {isTe ? "ఆంధ్రప్రదేశ్ పౌర సహాయక్" : "AP Civic Technology"}
+              </span>
+            </div>
+            <p className="brand-subtitle">
+              {isTe
+                ? "గ్రామీణ పౌరుల కోసం అధికారిక సమాచారం & సంక్షేమ మార్గదర్శక వేదిక"
+                : "Multimodal digital guidance for rural citizens of Andhra Pradesh"}
+            </p>
           </div>
         </div>
 
-        <select
-          className="language-select"
-          value={language}
-          onChange={(e) => {
-            setLanguage(e.target.value);
-            setVoiceMessage("");
-          }}
-          aria-label="Select language"
-        >
-          <option value="Telugu">తెలుగు (Telugu)</option>
-          <option value="English">English</option>
-        </select>
+        <div className="header-actions">
+          <label htmlFor="language-selector" className="sr-only">
+            {isTe ? "భాష ఎంచుకోండి" : "Select language"}
+          </label>
+          <div className="language-selector-wrapper">
+            <span className="lang-icon" aria-hidden="true">🌐</span>
+            <select
+              id="language-selector"
+              className="language-select"
+              value={language}
+              onChange={(e) => {
+                setLanguage(e.target.value);
+                setVoiceMessage("");
+              }}
+              aria-label="Select language"
+            >
+              <option value="Telugu">తెలుగు (Telugu)</option>
+              <option value="English">English</option>
+            </select>
+          </div>
+        </div>
       </header>
 
-      {/* Navigation Tabs for Services */}
+      {/* Navigation Tabs for Core Services */}
       <nav className="portal-nav" aria-label="Portal Services">
         <button
           className={`nav-tab ${activeTab === "chat" ? "active" : ""}`}
           onClick={() => setActiveTab("chat")}
         >
           <span className="nav-tab-icon">💬</span>
-          <span>{language === "Telugu" ? "సహాయక్ చాట్" : "Sahayak Chat"}</span>
+          <span>{isTe ? "సహాయక్ చాట్" : "Sahayak Chat"}</span>
         </button>
 
         <button
@@ -721,7 +763,7 @@ export default function Home() {
           onClick={() => setActiveTab("documents")}
         >
           <span className="nav-tab-icon">📄</span>
-          <span>{language === "Telugu" ? "పత్రాల విశ్లేషణ" : "Document Analysis"}</span>
+          <span>{isTe ? "పత్రాల విశ్లేషణ" : "Document Analysis"}</span>
         </button>
 
         <button
@@ -729,7 +771,7 @@ export default function Home() {
           onClick={() => setActiveTab("services")}
         >
           <span className="nav-tab-icon">📍</span>
-          <span>{language === "Telugu" ? "సమీప ప్రభుత్వ సేవలు" : "Nearby Services"}</span>
+          <span>{isTe ? "సమీప ప్రభుత్వ సేవలు" : "Nearby Services"}</span>
         </button>
 
         <button
@@ -737,7 +779,7 @@ export default function Home() {
           onClick={() => setActiveTab("grievances")}
         >
           <span className="nav-tab-icon">📝</span>
-          <span>{language === "Telugu" ? "ఫిర్యాదు ముసాయిదా" : "Draft Grievance"}</span>
+          <span>{isTe ? "ఫిర్యాదు ముసాయిదా" : "Draft Grievance"}</span>
         </button>
       </nav>
 
@@ -750,25 +792,37 @@ export default function Home() {
       {/* View: Grievances */}
       {activeTab === "grievances" && <GrievanceDrafting language={language} />}
 
-      {/* View: Chat (Default Homepage Experience) */}
+      {/* View: Chat (Default Citizen Experience) */}
       {activeTab === "chat" && (
         <>
-          {/* Hero */}
+          {/* Civic Tech Hero Banner */}
           <section className="hero">
             <div className="hero-content">
-              <span className="welcome-tag">YOUR DIGITAL VILLAGE ASSISTANT</span>
+              <span className="welcome-tag">
+                {isTe ? "🌿 గ్రామీణ పౌర డిజిటల్ వేదిక" : "🌿 CIVIC DIGITAL ASSISTANCE PLATFORM"}
+              </span>
 
               <h2>
-                How can we help
-                <br />
-                <span>you today?</span>
+                {isTe ? (
+                  <>
+                    మీకు నేడు ఎలా <br />
+                    <span>సహాయపడగలం?</span>
+                  </>
+                ) : (
+                  <>
+                    How can we assist <br />
+                    <span>your family today?</span>
+                  </>
+                )}
               </h2>
 
               <p>
-                Ask anything. Get trusted guidance in your own language.
-                Simple, accessible help for everyone.
+                {isTe
+                  ? "ప్రభుత్వ సంక్షేమ పథకాలు, సాగుబడి సలహాలు, ఆరోగ్యశ్రీ చికిత్సలు మరియు విద్యార్థి స్కాలర్‌షిప్‌లపై ధృవీకరించబడిన సమాచారం పొందండి. స్పష్టంగా తెలుగులో మాట్లాడండి లేదా టైప్ చేయండి."
+                  : "Get verified public guidance on government welfare schemes, farming crop advisories, cashless healthcare & student scholarships. Speak in Telugu or English."}
               </p>
 
+              {/* Prominent Microphone & Recording Controls */}
               <div className="voice-control-wrapper">
                 <button
                   type="button"
@@ -777,10 +831,10 @@ export default function Home() {
                   disabled={recordingState === "requesting_permission" || recordingState === "transcribing"}
                   aria-label={
                     recordingState === "recording"
-                      ? language === "Telugu" ? "రికార్డింగ్ ఆపి పంపండి" : "Stop and transcribe"
+                      ? isTe ? "రికార్డింగ్ ఆపి పంపండి" : "Stop and transcribe"
                       : recordingState === "transcribing"
-                      ? language === "Telugu" ? "వాయిస్ ప్రాసెస్ అవుతోంది" : "Processing speech"
-                      : language === "Telugu" ? "మీ ప్రశ్నను మాట్లాడండి" : "Speak your question"
+                      ? isTe ? "వాయిస్ ప్రాసెస్ అవుతోంది" : "Processing speech"
+                      : isTe ? "మీ ప్రశ్నను మాట్లాడండి" : "Speak your question"
                   }
                 >
                   <span className="mic-icon">
@@ -799,30 +853,30 @@ export default function Home() {
                   <span>
                     <strong>
                       {recordingState === "recording"
-                        ? `${language === "Telugu" ? "రికార్డింగ్ ఆపి పంపండి" : "Stop and transcribe"} (${formatDuration(recordingDuration)} / 00:30)`
+                        ? `${isTe ? "రికార్డింగ్ ఆపి పంపండి" : "Stop & Transcribe"} (${formatDuration(recordingDuration)} / 00:30)`
                         : recordingState === "transcribing"
-                        ? language === "Telugu"
+                        ? isTe
                           ? "వాయిస్ ప్రాసెస్ అవుతోంది..."
-                          : "Transcribing speech..."
+                          : "Transcribing with Sarvam AI..."
                         : recordingState === "requesting_permission"
-                        ? language === "Telugu"
+                        ? isTe
                           ? "మైక్రోఫోన్ అనుమతించండి..."
                           : "Allow microphone..."
-                        : language === "Telugu"
+                        : isTe
                         ? "మీ ప్రశ్నను మాట్లాడండి"
                         : "Speak your question"}
                     </strong>
                     <small>
                       {recordingState === "recording"
-                        ? language === "Telugu"
-                          ? "టెక్స్ట్‌గా మార్చడానికి తాకండి"
+                        ? isTe
+                          ? "టెక్స్ట్‌గా మార్చడానికి ఇక్కడ తాకండి"
                           : "Tap to finish and transcribe"
                         : recordingState === "transcribing"
-                        ? language === "Telugu"
+                        ? isTe
                           ? "AI ద్వారా గుర్తిస్తున్నాము"
-                          : "Converting speech to text"
-                        : language === "Telugu"
-                        ? "వాయిస్ ఉపయోగించి అడగడానికి తాకండి"
+                          : "Converting voice to text"
+                        : isTe
+                        ? "వాయిస్ ఉపయోగించి నేరుగా అడగండి"
                         : "Tap to ask using your voice"}
                     </small>
                   </span>
@@ -833,10 +887,10 @@ export default function Home() {
                     type="button"
                     className="voice-cancel-button"
                     onClick={cancelVoiceInput}
-                    aria-label={language === "Telugu" ? "రికార్డింగ్ రద్దు చేయండి" : "Cancel voice input"}
-                    title={language === "Telugu" ? "రద్దు చేయండి" : "Cancel"}
+                    aria-label={isTe ? "రికార్డింగ్ రద్దు చేయండి" : "Cancel voice input"}
+                    title={isTe ? "రద్దు చేయండి" : "Cancel"}
                   >
-                    ✕ {language === "Telugu" ? "రద్దు చేయండి" : "Cancel"}
+                    ✕ {isTe ? "రద్దు చేయండి" : "Cancel"}
                   </button>
                 )}
               </div>
@@ -849,114 +903,158 @@ export default function Home() {
             </div>
 
             <div className="hero-decoration" aria-hidden="true">
-              <span>🌱</span>
-              <span>🌾</span>
-              <span>🍃</span>
+              <span className="deco-icon-1">🌾</span>
+              <span className="deco-icon-2">🏛️</span>
+              <span className="deco-icon-3">🩺</span>
             </div>
           </section>
 
-          {/* Categories */}
+          {/* 4 Specialist Assistant Cards */}
           <section className="assistance-section">
             <div className="section-heading">
               <div>
-                <span className="section-label">HERE TO HELP</span>
-                <h2>What do you need help with?</h2>
+                <span className="section-label">
+                  {isTe ? "ప్రత్యేక సహాయకులు" : "SPECIALIST ASSISTANTS"}
+                </span>
+                <h2>
+                  {isTe ? "మీకు ఏ విభాగంలో సహాయం కావాలి?" : "Select your area of assistance"}
+                </h2>
               </div>
-              <p>Choose a category to get started</p>
+              <p>
+                {isTe
+                  ? "అధికారిక సమాచార మార్గదర్శకత్వం కోసం విభాగాన్ని ఎంచుకోండి"
+                  : "Choose a specialist domain to receive focused and verified answers"}
+              </p>
             </div>
 
             <div className="category-grid">
-              {categories.map((category) => (
-                <button
-                  key={category.title}
-                  className={`category-card ${category.color} ${
-                    selectedCategory === category.title ? "selected" : ""
-                  }`}
-                  onClick={() => {
-                    setSelectedCategory(category.title);
-                    if (category.title === "Government Schemes") {
-                      setShowEligibility(true);
-                    } else {
-                      setShowEligibility(false);
-                    }
-                  }}
-                >
-                  <div className="category-icon">{category.icon}</div>
+              {SPECIALIST_ASSISTANTS.map((assistant) => {
+                const isSelected = selectedCategory === assistant.id || selectedCategory === assistant.title;
+                return (
+                  <button
+                    key={assistant.id}
+                    type="button"
+                    className={`category-card ${assistant.color} ${isSelected ? "selected" : ""}`}
+                    onClick={() => {
+                      setSelectedCategory(assistant.id);
+                      if (assistant.id === "schemes") {
+                        setShowEligibility(true);
+                      } else {
+                        setShowEligibility(false);
+                      }
+                    }}
+                  >
+                    <div className="category-card-top">
+                      <div className="category-icon">{assistant.icon}</div>
+                      <span className="category-badge">
+                        {isTe ? assistant.badgeTe : assistant.badgeEn}
+                      </span>
+                    </div>
 
-                  <div className="category-text">
-                    <h3>{category.title}</h3>
-                    <p>{category.description}</p>
-                  </div>
+                    <div className="category-text">
+                      <h3>{isTe ? assistant.titleTe : assistant.titleEn}</h3>
+                      <p>{isTe ? assistant.descriptionTe : assistant.descriptionEn}</p>
+                    </div>
 
-                  <span className="card-arrow">→</span>
-                </button>
-              ))}
+                    <div className="category-card-footer">
+                      <span className="select-action-text">
+                        {isSelected
+                          ? isTe ? "ఎంచుకోబడింది ✓" : "Active Assistant ✓"
+                          : isTe ? "ఎంచుకోండి →" : "Select Domain →"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
-            {selectedCategory && (
-              <div className="selected-category-message">
-                <span>✓</span>
-                <p>
-                  <strong>{selectedCategory}</strong> selected. You can now ask your
-                  question below.
-                </p>
-                <button
-                  onClick={() => {
-                    setSelectedCategory("");
-                    setShowEligibility(false);
-                  }}
-                >
-                  Change
-                </button>
-              </div>
-            )}
-
-            {/* Quick Action: Check Scheme Eligibility */}
+            {/* Quick Action: Check Scheme Eligibility Button */}
             <div className="quick-action-row">
               <button
                 type="button"
-                className={`quick-eligibility-btn ${selectedCategory === "Government Schemes" && showEligibility ? "active" : ""}`}
+                className={`quick-eligibility-btn ${
+                  (selectedCategory === "schemes" || selectedCategory === "Government Schemes") && showEligibility
+                    ? "active"
+                    : ""
+                }`}
                 onClick={() => {
-                  if (selectedCategory === "Government Schemes" && showEligibility) {
+                  if ((selectedCategory === "schemes" || selectedCategory === "Government Schemes") && showEligibility) {
                     setShowEligibility(false);
                   } else {
-                    setSelectedCategory("Government Schemes");
+                    setSelectedCategory("schemes");
                     setShowEligibility(true);
                   }
                 }}
               >
                 <span>📋</span>
                 <span>
-                  {language === "Telugu"
-                    ? "పథకం అర్హతను తనిఖీ చేయండి (Check Eligibility)"
-                    : "Check Scheme Eligibility"}
+                  {isTe
+                    ? "సంక్షేమ పథకాల అర్హత పరిశీలన సాధనం (Check Eligibility Form)"
+                    : "Interactive Scheme Eligibility Calculator"}
                 </span>
-                <span>{selectedCategory === "Government Schemes" && showEligibility ? "▲" : "▼"}</span>
+                <span className="toggle-chevron">
+                  {(selectedCategory === "schemes" || selectedCategory === "Government Schemes") && showEligibility
+                    ? "▲"
+                    : "▼"}
+                </span>
               </button>
             </div>
 
             {/* Dedicated Eligibility Evaluation View within Government Schemes */}
-            {(selectedCategory === "Government Schemes" && showEligibility) && (
+            {((selectedCategory === "schemes" || selectedCategory === "Government Schemes") && showEligibility) && (
               <div className="embedded-eligibility-section">
                 <SchemeEligibility language={language} />
               </div>
             )}
+
+            {/* Suggested Citizen Questions (Task 2) */}
+            <div className="suggested-questions-panel">
+              <div className="suggested-title-row">
+                <span className="sparkle-icon">💡</span>
+                <strong>
+                  {isTe
+                    ? `సూచించిన ప్రశ్నలు (${isTe ? currentAssistant.titleTe : currentAssistant.titleEn}):`
+                    : `Suggested Questions (${currentAssistant.titleEn}):`}
+                </strong>
+              </div>
+              <div className="suggested-chips-grid">
+                {(isTe ? currentAssistant.suggestedQuestionsTe : currentAssistant.suggestedQuestionsEn).map(
+                  (sq, qIdx) => (
+                    <button
+                      key={qIdx}
+                      type="button"
+                      className="suggested-chip-btn"
+                      onClick={() => handleSendMessage(sq)}
+                    >
+                      <span>💬</span>
+                      <span className="chip-query-text">{sq}</span>
+                      <span className="chip-arrow">→</span>
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
           </section>
 
-          {/* Chat conversation */}
+          {/* Chat conversation area */}
           {messages.length > 0 && (
             <section className="chat-section">
               <div className="chat-heading">
                 <div>
-                  <span className="section-label">YOUR CONVERSATION</span>
-                  <h2>Chat with Grama Sahayak</h2>
+                  <span className="section-label">
+                    {isTe ? "మీ సంభాషణ" : "CITIZEN CONSULTATION"}
+                  </span>
+                  <h2>{isTe ? "సహాయక్ చాట్ వివరాలు" : "Chat with Grama Sahayak"}</h2>
                 </div>
 
                 <button
+                  type="button"
                   className="new-chat-button"
                   onClick={handleNewChat}
+                  title={isTe ? "కొత్త సంభాషణ ప్రారంభించండి" : "Start a new conversation"}
                 >
-                  + New Chat
+                  <span>+</span>
+                  <span>{isTe ? "కొత్త చాట్" : "New Chat"}</span>
                 </button>
               </div>
 
@@ -965,9 +1063,7 @@ export default function Home() {
                   <div
                     key={message.id}
                     className={`chat-message ${
-                      message.sender === "user"
-                        ? "user-message"
-                        : "assistant-message"
+                      message.sender === "user" ? "user-message" : "assistant-message"
                     }`}
                   >
                     <div className="message-avatar">
@@ -977,47 +1073,51 @@ export default function Home() {
                     <div className="message-content">
                       <span className="message-sender">
                         {message.sender === "user"
-                          ? "You"
-                          : "Grama Sahayak"}
+                          ? isTe ? "మీరు" : "You"
+                          : isTe ? "గ్రామ సహాయక్" : "Grama Sahayak"}
                       </span>
 
-                      <p>{message.text}</p>
+                      {/* Safe Markdown formatting (Task 3) */}
+                      {message.sender === "assistant" ? (
+                        <SafeMarkdown content={message.text} />
+                      ) : (
+                        <p className="user-text">{message.text}</p>
+                      )}
 
-                      {/* Safety Notice */}
+                      {/* Safety / Contextual Advisory Box */}
                       {message.safetyNotice && (
                         <div className="safety-notice-box" role="alert">
-                          <span>⚠️</span>
-                          <div>
-                            <strong>Advisory: </strong>
+                          <span className="notice-icon">⚠️</span>
+                          <div className="notice-body">
+                            <strong>{isTe ? "ముఖ్య గమనిక: " : "Advisory: "}</strong>
                             <span>{message.safetyNotice}</span>
                           </div>
                         </div>
                       )}
 
-                      {/* Sources */}
+                      {/* Official Sources Citation Cards */}
                       {message.sources && message.sources.length > 0 && (
                         <div className="sources-container">
                           <span className="sources-title">
-                            {language === "Telugu" ? "అధికారిక ఆధారాలు:" : "Official Sources:"}
+                            🏛️ {isTe ? "ధృవీకరించబడిన అధికారిక ఆధారాలు:" : "Verified Official Sources:"}
                           </span>
                           <div className="sources-list">
                             {message.sources.map((src, sIdx) => (
                               <div key={sIdx} className="source-item">
-                                <span>🏛️</span>
                                 <a
                                   href={src.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="source-link"
                                 >
-                                  {src.title}
+                                  {src.title} ↗
                                 </a>
                                 {src.publisher && (
-                                  <span className="source-meta">({src.publisher})</span>
+                                  <span className="source-meta"> — {src.publisher}</span>
                                 )}
                                 {src.verified_at && (
                                   <span className="source-meta">
-                                    {" "}• {language === "Telugu" ? `ధృవీకరించబడింది: ${src.verified_at}` : `Verified: ${src.verified_at}`}
+                                    {" "}• {isTe ? `ధృవీకరించబడింది: ${src.verified_at}` : `Verified: ${src.verified_at}`}
                                   </span>
                                 )}
                               </div>
@@ -1026,16 +1126,17 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Follow-up Questions */}
+                      {/* Follow-up Questions Chips */}
                       {message.followUps && message.followUps.length > 0 && (
                         <div className="follow-up-container">
                           <span className="follow-up-title">
-                            {language === "Telugu" ? "సూచించిన ప్రశ్నలు:" : "Suggested Questions:"}
+                            💡 {isTe ? "సంబంధిత తదుపరి ప్రశ్నలు:" : "Related Follow-up Questions:"}
                           </span>
                           <div className="follow-up-chips">
                             {message.followUps.map((fq, fIdx) => (
                               <button
                                 key={fIdx}
+                                type="button"
                                 className="follow-up-chip"
                                 onClick={() => handleSendMessage(fq)}
                               >
@@ -1046,15 +1147,17 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Voice Audio Listen Button (Member 3) */}
+                      {/* Voice Audio Listen Button */}
                       {message.sender === "assistant" && !message.isError && (
-                        <AudioSpeakButton text={message.text} language={language} />
+                        <div className="message-audio-row">
+                          <AudioSpeakButton text={message.text} language={language} />
+                        </div>
                       )}
 
                       {/* Retry Button on Error */}
                       {message.isError && (
-                        <button className="retry-button" onClick={handleRetry}>
-                          ↻ {language === "Telugu" ? "మళ్లీ ప్రయత్నించండి" : "Retry"}
+                        <button type="button" className="retry-button" onClick={handleRetry}>
+                          ↻ {isTe ? "మళ్లీ ప్రయత్నించండి" : "Retry"}
                         </button>
                       )}
                     </div>
@@ -1064,36 +1167,39 @@ export default function Home() {
                 {isThinking && (
                   <div className="chat-message assistant-message thinking-message">
                     <div className="message-avatar">🌿</div>
-
                     <div className="message-content">
-                      <span className="message-sender">Grama Sahayak</span>
+                      <span className="message-sender">
+                        {isTe ? "గ్రామ సహాయక్" : "Grama Sahayak"}
+                      </span>
                       <p className="thinking-text">
-                        Thinking<span className="thinking-dots">...</span>
+                        <span>{isTe ? "సమాధానం సిద్ధం చేస్తోంది" : "Consulting verified knowledge"}</span>
+                        <span className="thinking-dots">...</span>
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* Automatic scroll target */}
                 <div ref={chatEndRef} />
               </div>
 
               {backendNotice ? (
-                <p className="demo-notice" style={{ color: "#b94a48" }}>
+                <p className="demo-notice error-notice-text">
                   ℹ️ {backendNotice}
                 </p>
               ) : (
                 <p className="demo-notice">
-                  AI Grama Sahayak • Integrated with verified public information and government schemes.
+                  ⚖️ {isTe
+                    ? "గ్రామ సహాయక్ • ఆంధ్రప్రదేశ్ ప్రభుత్వ ధృవీకరించబడిన సంక్షేమ నిబంధనలు మరియు మార్గదర్శకాలపై ఆధారపడి పనిచేస్తుంది."
+                    : "AI Grama Sahayak • Integrated with verified public information, gazettes and AP government guidelines."}
                 </p>
               )}
             </section>
           )}
 
-          {/* Question input */}
+          {/* Bottom Question Input Bar */}
           <section className="question-section">
             <div className="question-box">
-              <div className="question-icon">💬</div>
+              <div className="question-icon" aria-hidden="true">💬</div>
 
               <input
                 type="text"
@@ -1105,35 +1211,57 @@ export default function Home() {
                   }
                 }}
                 placeholder={
-                  language === "Telugu"
-                    ? "మీ ప్రశ్నను ఇక్కడ నమోదు చేయండి..."
-                    : "Type your question here..."
+                  isTe
+                    ? `మీ ప్రశ్నను ఇక్కడ అడగండి (${currentAssistant.titleTe})...`
+                    : `Ask your question here (${currentAssistant.titleEn})...`
                 }
-                aria-label="Type your question"
+                aria-label={isTe ? "మీ ప్రశ్నను నమోదు చేయండి" : "Type your question"}
               />
 
               <button
+                type="button"
                 className="send-button"
                 disabled={!question.trim() || isThinking}
                 onClick={() => handleSendMessage()}
+                aria-label={isTe ? "పంపండి" : "Send question"}
               >
-                {isThinking ? "..." : "Send"} <span>➤</span>
+                <span>{isThinking ? "⏳" : isTe ? "పంపండి" : "Send"}</span>
+                <span className="send-arrow">➤</span>
               </button>
             </div>
 
-            <p className="question-hint">
-              {language === "Telugu"
-                ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు"
-                : "You can type in Telugu or English"}
-            </p>
+            <div className="question-hint-row">
+              <span className="hint-tag">
+                {isTe ? "చిట్కా" : "Tip"}
+              </span>
+              <p className="question-hint">
+                {isTe
+                  ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు, లేదా పైనున్న మైక్రోఫోన్ ద్వారా మాట్లాడవచ్చు."
+                  : "You can type in Telugu or English, or use the microphone button above to speak."}
+              </p>
+            </div>
           </section>
         </>
       )}
 
-      {/* Footer */}
+      {/* Trust & Transparency Footer */}
       <footer className="site-footer">
-        <span>🌿 AI Grama Sahayak</span>
-        <span>Simple • Trusted • Accessible</span>
+        <div className="footer-left">
+          <span className="footer-brand">🌿 AI Grama Sahayak</span>
+          <span className="footer-pipe">•</span>
+          <span className="footer-tagline">
+            {isTe
+              ? "గ్రామీణ పౌరులకు పారదర్శక, ప్రాప్యమైన డిజిటల్ సహాయం"
+              : "Transparent, Accessible Civic Intelligence for Rural Citizens"}
+          </span>
+        </div>
+        <div className="footer-right">
+          <small>
+            {isTe
+              ? "నిరాకరణ: ఇది పౌర సహాయ సాధనం మాత్రమే. అధికారిక అనుమతులు లేదా ధృవీకరణలకు స్థానిక సచివాలయాన్ని సంప్రదించండి."
+              : "Disclaimer: Autonomous informational guidance. Consult Grama Sachivalayam for formal statutory filings."}
+          </small>
+        </div>
       </footer>
     </main>
   );
