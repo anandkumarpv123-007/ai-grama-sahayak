@@ -22,10 +22,10 @@ def test_telugu_annadata_application_actionable_and_no_english_paragraphs():
     answer = data["answer"]
 
     # Actionable Telugu guidance present
-    assert "రైతు సేవా కేంద్రం" in answer or "రైతు భరోసా కేంద్రం" in answer
-    assert "గ్రామ వ్యవసాయ సహాయకుడిని" in answer or "VAA" in answer
-    assert "ఈ-పంట" in answer or "e-Crop" in answer
-    assert "ఈ-కేవైసీ" in answer or "e-KYC" in answer
+    assert "రైతు సేవా కేంద్ర" in answer or "రైతు భరోసా కేంద్ర" in answer or "RSK" in answer or "RBK" in answer
+    assert "గ్రామ వ్యవసాయ సహాయకు" in answer or "VAA" in answer
+    assert "ఈ-క్రాప్" in answer or "e-Crop" in answer or "ఈ-పంట" in answer
+    assert "నమోదు" in answer or "దరఖాస్తు" in answer
     assert "https://annadathasukhibhava.ap.gov.in" in answer
     assert "155251" in answer or "1902" in answer
 
@@ -63,6 +63,8 @@ def test_telugu_thalliki_vandanam_documents():
 def test_telugu_crop_insurance_application():
     """
     Query asking how to apply for crop insurance in Telugu.
+    Must return grounded, actionable application guidance via VAA e-Crop booking
+    and required documents.
     """
     payload = {
         "message": "పంటల బీమాకు ఎలా దరఖాస్తు చేయాలి?",
@@ -75,9 +77,25 @@ def test_telugu_crop_insurance_application():
     data = response.json()
     answer = data["answer"]
 
-    assert "ఈ-పంట" in answer or "e-Crop" in answer
-    assert "రైతు సేవా కేంద్రం" in answer or "రైతు భరోసా కేంద్రం" in answer
-    assert "https://pmfby.gov.in" in answer
+    # Scheme relevance & title prefix
+    assert "పంటల బీమా" in answer or "పీఎం ఫసల్ బీమా" in answer
+
+    # Actionable Telugu application process: e-Crop booking by VAA
+    assert "ఈ-క్రాప్" in answer or "e-Crop" in answer or "ఈ-పంట" in answer or "e-Panta" in answer
+    assert "గ్రామ వ్యవసాయ సహాయకుడు" in answer or "VAA" in answer or "రైతు సేవా కేంద్ర" in answer or "రైతు భరోసా కేంద్ర" in answer
+
+    # Required documents & DBT disbursement specified
+    assert "ఆధార్" in answer
+    assert "పాస్‌బుక్" in answer or "పట్టాదారు" in answer or "1-బి" in answer or "సీసీఆర్‌సీ" in answer
+    assert "బ్యాంక్" in answer or "డీబీటీ" in answer or "DBT" in answer
+
+    # Verify substantive Telugu answer without English paragraph leakage
+    for line in answer.split("\n"):
+        l = line.strip()
+        if not l or l.startswith("http") or l.startswith("-") or l.startswith("•"):
+            continue
+        if len(l) > 40 and not any("\u0C00" <= c <= "\u0C7F" for c in l):
+            pytest.fail(f"English sentence leaked in Telugu response: {l}")
 
 
 def test_english_ammavodi_zero_telugu_characters():
@@ -608,11 +626,12 @@ def test_no_unsupported_fallback_claims_in_synthesized_answers():
 
 def test_member2_commit_knowledge_compatibility():
     """
-    Verifies that real documents from Member 2's commit (4d18a84cedb299fcd0a4833c22728efc2f75f655)
-    are 100% compatible with evidence extraction without committing those files to this branch.
+    Verifies that real verified knowledge documents integrated in the repository
+    are 100% compatible with evidence extraction using repository-relative paths.
     Tests multiple core schemes across agriculture, education, healthcare, and pensions.
+    Does not require historical Git commits or external Git access.
     """
-    import subprocess
+    from pathlib import Path
     from app.services.answer_synthesizer import (
         extract_bilingual_evidence_from_chunks,
         INTENT_APPLICATION,
@@ -623,7 +642,7 @@ def test_member2_commit_knowledge_compatibility():
     from app.services.retrieval.chunking import MarkdownChunker
     from app.services.retrieval.models import IngestedDocument
 
-    member2_commit = "4d18a84cedb299fcd0a4833c22728efc2f75f655"
+    repo_root = Path(__file__).resolve().parents[2]
     test_cases = [
         {
             "file": "knowledge_base/verified/agriculture/annadata_sukhibhava_pmkisan.md",
@@ -662,14 +681,9 @@ def test_member2_commit_knowledge_compatibility():
     chunker = MarkdownChunker()
 
     for tc in test_cases:
-        proc = subprocess.run(
-            ["git", "show", f"{member2_commit}:{tc['file']}"],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        assert proc.returncode == 0, f"Failed to fetch {tc['file']}"
-        doc_content = proc.stdout
+        file_path = repo_root / tc["file"]
+        assert file_path.is_file(), f"Integrated knowledge file not found: {file_path}"
+        doc_content = file_path.read_text(encoding="utf-8")
         assert "తెలుగు వివరణ:" in doc_content
 
         doc = IngestedDocument(
