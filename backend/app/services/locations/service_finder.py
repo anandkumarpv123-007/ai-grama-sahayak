@@ -13,6 +13,7 @@ for discovery/sorting, not exact road distances or navigation directions.
 from typing import List, Dict, Any, Optional
 import math
 from .models import VERIFIED_AP_SERVICES, haversine_distance_km
+from app.services.documents.field_parser import normalize_district, AP_DISTRICTS, AP_DISTRICT_SYNONYMS
 
 
 def find_nearby_services(
@@ -68,7 +69,8 @@ def find_nearby_services(
             raise ValueError("Longitude must be between -180 and 180 degrees.")
 
     cleaned_service_type = service_type.strip().lower() if service_type else None
-    cleaned_district = district.strip().lower() if district else None
+    canonical_district = normalize_district(district) if district else None
+    raw_district_lower = district.strip().lower() if district else None
 
     results: List[Dict[str, Any]] = []
 
@@ -78,7 +80,7 @@ def find_nearby_services(
             item_type = item["service_type"].lower()
             if cleaned_service_type != item_type:
                 # Also allow 'healthcare' alias to match hospital and community health centres
-                if cleaned_service_type == "healthcare" and item_type in [
+                if cleaned_service_type in ["healthcare", "health", "phc", "hospital_or_phc"] and item_type in [
                     "hospital",
                     "community_health_centre",
                 ]:
@@ -86,10 +88,18 @@ def find_nearby_services(
                 else:
                     continue
 
-        # Filter by district if provided
-        if cleaned_district:
-            item_district = item["district"].lower()
-            if cleaned_district != item_district and cleaned_district not in item_district:
+        # Filter by district if provided (supports canonical match, case-insensitivity, and substring)
+        if canonical_district or raw_district_lower:
+            item_district = item["district"]
+            item_district_lower = item_district.lower()
+
+            matches_district = False
+            if canonical_district and canonical_district.lower() == item_district_lower:
+                matches_district = True
+            elif raw_district_lower and (raw_district_lower == item_district_lower or raw_district_lower in item_district_lower or item_district_lower in raw_district_lower):
+                matches_district = True
+
+            if not matches_district:
                 continue
 
         # Calculate distance if coordinates provided

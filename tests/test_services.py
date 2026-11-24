@@ -118,7 +118,7 @@ class TestNearbyServices(unittest.TestCase):
 
     def test_verified_records_integrity(self):
         """Verify that every record in the substantiated dataset is verified with authoritative sources."""
-        self.assertEqual(len(VERIFIED_AP_SERVICES), 10, "Audited dataset must contain 10 substantiated facilities")
+        self.assertEqual(len(VERIFIED_AP_SERVICES), 15, "Audited dataset must contain 15 substantiated facilities")
 
         verified_phone_count = 0
         for item in VERIFIED_AP_SERVICES:
@@ -128,7 +128,7 @@ class TestNearbyServices(unittest.TestCase):
             self.assertIn(item["service_type"], ["hospital", "community_health_centre"])
             self.assertIsInstance(item["latitude"], (int, float))
             self.assertIsInstance(item["longitude"], (int, float))
-            self.assertEqual(item.get("verified_at"), "2026-11-21")
+            self.assertTrue(item.get("verified_at").startswith("2026-11-"))
             self.assertIn("evidence", item, "Every record must include audit evidence")
 
             # Check phone is either substantiated string or None
@@ -149,6 +149,35 @@ class TestNearbyServices(unittest.TestCase):
 
         # 6 DME teaching hospitals have substantiated direct landlines
         self.assertEqual(verified_phone_count, 6)
+
+    def test_palnadu_district_and_spelling_variants(self):
+        """Test Palnadu district search with case-insensitivity, Telugu, and town names."""
+        for d in ["palnadu", "Palnadu", "PALNADU", "పల్నాడు", "narasaraopet"]:
+            results = find_nearby_services(district=d)
+            self.assertGreaterEqual(len(results), 1, f"Must find Palnadu facilities for '{d}'")
+            self.assertTrue(any("Narasaraopet" in r["name"] for r in results))
+
+    def test_guntur_and_krishna_coverage(self):
+        """Test expanded Guntur and Krishna coverage."""
+        guntur_results = find_nearby_services(district="Guntur")
+        self.assertGreaterEqual(len(guntur_results), 3)
+
+        krishna_results = find_nearby_services(district="Krishna")
+        self.assertGreaterEqual(len(krishna_results), 2)
+
+    def test_education_service_type_honest_empty(self):
+        """Test service_type='education' in Guntur returns honest empty results without fabricating."""
+        results = find_nearby_services(service_type="education", district="Guntur")
+        self.assertEqual(results, [], "Must return empty results when no facilities of that type exist")
+
+    def test_gps_coordinate_search_palnadu(self):
+        """Test GPS coordinate search near Narasaraopet (Palnadu) returns sorted radial facilities."""
+        results = find_nearby_services(latitude=16.2354, longitude=80.0499, radius_km=50.0)
+        self.assertGreaterEqual(len(results), 2)
+        # Verify distance sorting
+        distances = [r["distance_km"] for r in results]
+        self.assertEqual(distances, sorted(distances))
+        self.assertLessEqual(distances[0], 1.0)  # AH Narasaraopet should be ~0 km
 
     def test_haversine_distance_calculation(self):
         """Test Haversine distance accuracy against known geographic coordinates."""

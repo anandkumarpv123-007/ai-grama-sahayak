@@ -898,6 +898,32 @@ TRANSITIONING_SCHEMES: Dict[str, Dict[str, str]] = {
             "దయచేసి మీ స్థానిక గ్రామ/వార్డు సచివాలయాన్ని సంప్రదించండి."
         ),
     },
+    "thalliki_vandanam": {
+        "en": (
+            "The 'Thalliki Vandanam' scheme guidelines and operational eligibility rules "
+            "are governed by annual administrative notifications issued by the School Education Department. "
+            "Formal deterministic certification requires active Gazette orders and school Child Info synchronization. "
+            "Mothers and guardians are advised to verify preliminary eligibility at their local Grama / Ward Sachivalayam."
+        ),
+        "te": (
+            "'తల్లికి వందనం' పథక మార్గదర్శకాలు మరియు కార్యాచరణ నిబంధనలు పాఠశాల విద్యాశాఖ వార్షిక పరిపాలనా ఉత్తర్వుల ప్రకారం అమలు చేయబడతాయి. "
+            "అధికారిక గెజిట్ మరియు చైల్డ్ ఇన్ఫో సరిపోలిక తర్వాతే తుది మంజూరు లభిస్తుంది. "
+            "దయచేసి మీ స్థానిక గ్రామ/వార్డు సచివాలయంలో ప్రాథమిక వివరాలు సరిచూసుకోండి."
+        ),
+    },
+    "talliki_vandanam": {
+        "en": (
+            "The 'Thalliki Vandanam' scheme guidelines and operational eligibility rules "
+            "are governed by annual administrative notifications issued by the School Education Department. "
+            "Formal deterministic certification requires active Gazette orders and school Child Info synchronization. "
+            "Mothers and guardians are advised to verify preliminary eligibility at their local Grama / Ward Sachivalayam."
+        ),
+        "te": (
+            "'తల్లికి వందనం' పథక మార్గదర్శకాలు మరియు కార్యాచరణ నిబంధనలు పాఠశాల విద్యాశాఖ వార్షిక పరిపాలనా ఉత్తర్వుల ప్రకారం అమలు చేయబడతాయి. "
+            "అధికారిక గెజిట్ మరియు చైల్డ్ ఇన్ఫో సరిపోలిక తర్వాతే తుది మంజూరు లభిస్తుంది. "
+            "దయచేసి మీ స్థానిక గ్రామ/వార్డు సచివాలయంలో ప్రాథమిక వివరాలు సరిచూసుకోండి."
+        ),
+    },
     "ysr_rythu_bharosa": {
         "en": (
             "The legacy 'YSR Rythu Bharosa' scheme framework is under administrative restructuring "
