@@ -7,6 +7,7 @@ from app.services.retrieval.scheme_registry import detect_scheme_details, SCHEME
 from app.services.answer_synthesizer import (
     detect_query_intent,
     synthesize_scheme_answer,
+    extract_bilingual_evidence_from_chunks,
     sanitize_english_text,
     sanitize_telugu_text,
 )
@@ -452,13 +453,25 @@ class BaseSpecialistAgent(ABC):
         lines = raw_text.split("\n")
         cleaned_lines = []
 
-        # Check if chunk contains a dedicated Telugu explanation block
-        te_explanation = ""
+        # Capture complete multi-line Telugu explanation block if present
+        te_lines = []
+        capturing_te = False
         for line in lines:
             s = line.strip()
             if "తెలుగు వివరణ:" in s or "తెలుగు వివరణ" in s:
-                te_explanation = s.replace("తెలుగు వివరణ:", "").replace("తెలుగు వివరణ", "").strip("* ").strip()
-                break
+                capturing_te = True
+                cleaned_start = re.sub(r"^\*?\s*\**తెలుగు వివరణ:?\**\s*", "", s).strip()
+                if cleaned_start:
+                    te_lines.append(cleaned_start)
+                continue
+            if capturing_te:
+                if s.startswith("## ") or (s.startswith("* **") and "తెలుగు వివరణ" not in s and re.search(r"[a-zA-Z]{4,}", s)):
+                    capturing_te = False
+                else:
+                    if s:
+                        te_lines.append(s)
+
+        te_explanation = "\n".join(te_lines).strip()
 
         for line in lines:
             s = line.strip()
@@ -480,7 +493,7 @@ class BaseSpecialistAgent(ABC):
         if is_te and te_explanation:
             portals_or_helplines = [
                 l for l in cleaned_lines
-                if ("http" in l or "155251" in l or "1902" in l or "104" in l or "108" in l)
+                if ("http" in l or re.search(r"\b(?:108|104|14555|155251|1800-180-1551|14447|1902|14417|1800-425-6776|1800-425-2123)\b", l))
                 and "తెలుగు వివరణ" not in l
             ]
             parts = [te_explanation]

@@ -1,6 +1,9 @@
 import logging
 import uuid
 import re
+import time
+import threading
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, status
 from app.schemas.chat import ChatRequest, ChatResponse, Source
@@ -135,14 +138,114 @@ def _handle_ambiguous_ntr(language: LanguageCode) -> Dict[str, Any]:
     }
 
 
-# In-memory conversation state for multi-turn contextual queries
-_CONVERSATION_HISTORY: Dict[str, Dict[str, Any]] = {}
+class BoundedConversationMemory:
+    """
+    Thread-safe, LRU-bounded in-memory store for multi-turn conversation scheme context.
+    - Prevents unbounded memory growth in production by capping maximum tracked conversations (default 500).
+    - Enforces TTL expiration (default 30 minutes / 1800s) on conversation entries.
+    - Isolates conversation state across distinct conversation_ids.
+    - Stores strictly minimal scheme context needed for resolution (zero citizen PII).
+    """
+
+    def __init__(self, max_size: int = 500, ttl_seconds: int = 1800):
+        self.max_size = max_size
+        self.ttl_seconds = ttl_seconds
+        self._store: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._lock = threading.Lock()
+
+    def get(self, conv_id: str, default: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+        if not conv_id:
+            return default
+        with self._lock:
+            if conv_id not in self._store:
+                return default
+            entry = self._store[conv_id]
+            now = time.time()
+            if now - entry.get("updated_at", 0) > self.ttl_seconds:
+                del self._store[conv_id]
+                return default
+            self._store.move_to_end(conv_id)
+            return {
+                "last_scheme_id": entry.get("last_scheme_id"),
+                "last_scheme_name": entry.get("last_scheme_name"),
+                "last_assistant": entry.get("last_assistant"),
+            }
+
+    def set(
+        self,
+        conv_id: str,
+        scheme_id: str,
+        scheme_name: str,
+        assistant: Optional[Any] = None,
+    ) -> None:
+        if not conv_id:
+            return
+        with self._lock:
+            now = time.time()
+            if conv_id in self._store:
+                self._store.move_to_end(conv_id)
+            self._store[conv_id] = {
+                "last_scheme_id": scheme_id,
+                "last_scheme_name": scheme_name,
+                "last_assistant": assistant,
+                "updated_at": now,
+            }
+            while len(self._store) > self.max_size:
+                self._store.popitem(last=False)
+
+    def cleanup_expired(self) -> int:
+        """Removes expired entries and returns count of removed items."""
+        now = time.time()
+        pruned = 0
+        with self._lock:
+            expired_keys = [
+                k for k, v in self._store.items()
+                if now - v.get("updated_at", 0) > self.ttl_seconds
+            ]
+            for k in expired_keys:
+                del self._store[k]
+                pruned += 1
+        return pruned
+
+    def clear(self) -> None:
+        with self._lock:
+            self._store.clear()
+
+    def __contains__(self, conv_id: str) -> bool:
+        return self.get(conv_id) is not None
+
+    def __getitem__(self, conv_id: str) -> Dict[str, Any]:
+        val = self.get(conv_id)
+        if val is None:
+            raise KeyError(conv_id)
+        return val
+
+    def __setitem__(self, conv_id: str, value: Dict[str, Any]) -> None:
+        self.set(
+            conv_id=conv_id,
+            scheme_id=value.get("last_scheme_id", ""),
+            scheme_name=value.get("last_scheme_name", ""),
+            assistant=value.get("last_assistant"),
+        )
+
+    def __len__(self) -> int:
+        with self._lock:
+            now = time.time()
+            return sum(1 for v in self._store.values() if now - v.get("updated_at", 0) <= self.ttl_seconds)
+
+
+# Bounded in-memory conversation state for multi-turn contextual queries
+_CONVERSATION_MEMORY = BoundedConversationMemory(max_size=500, ttl_seconds=1800)
+_CONVERSATION_HISTORY = _CONVERSATION_MEMORY
 
 CONTEXT_PATTERNS = [
     re.compile(r"\b(?:this|the|that)\s+scheme\b", re.IGNORECASE),
     re.compile(r"\b(?:for\s+this|for\s+it|about\s+this|about\s+it)\b", re.IGNORECASE),
     re.compile(r"\bhow\s+(?:do\s+i|to|can\s+i)\s+apply(?:\s+for\s+(?:this|the|that)\s+scheme)?\b", re.IGNORECASE),
+    re.compile(r"\bwhat\s+(?:are\s+the\s+)?(?:documents?|papers?|proofs?)\s+(?:needed|required|for\s+this)\b", re.IGNORECASE),
+    re.compile(r"\b(?:who\s+is\s+eligible|eligibility\s+criteria|what\s+are\s+the\s+benefits)\b", re.IGNORECASE),
     re.compile(r"దీనికి|ఈ\s*పథక(?:ం|ానికి)|ఆ\s*పథక(?:ం|ానికి)|దీని\s*(?:గురించి|అర్హతలు|పత్రాలు|ప్రయోజనాలు)"),
+    re.compile(r"ఎలా\s*దరఖాస్తు|కావాల్సిన\s*పత్రాలు|ఎవరు\s*అర్హులు|ప్రయోజనాలు\s*ఏమిటి"),
 ]
 
 
@@ -540,8 +643,9 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # 5. Contextual follow-up resolution for multi-turn conversations
     routed_assistant = request.assistant
     if _is_contextual_query(clean_message) and not detect_named_schemes(clean_message):
-        if conv_id in _CONVERSATION_HISTORY and _CONVERSATION_HISTORY[conv_id].get("last_scheme_name"):
-            last_scheme = _CONVERSATION_HISTORY[conv_id]["last_scheme_name"]
+        memory_ctx = _CONVERSATION_MEMORY.get(conv_id)
+        if memory_ctx and memory_ctx.get("last_scheme_name"):
+            last_scheme = memory_ctx["last_scheme_name"]
             if request.language == LanguageCode.TE:
                 clean_message = re.sub(r"దీనికి|ఈ\s*పథకానికి|ఆ\s*పథకానికి", f"{last_scheme} పథకానికి", clean_message)
                 if last_scheme not in clean_message:
@@ -551,8 +655,8 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
                 clean_message = re.sub(r"\b(?:for\s+this|for\s+it)\b", f"for {last_scheme}", clean_message, flags=re.IGNORECASE)
                 if last_scheme.lower() not in clean_message.lower():
                     clean_message = f"{clean_message} for {last_scheme}"
-            if _CONVERSATION_HISTORY[conv_id].get("last_assistant"):
-                routed_assistant = _CONVERSATION_HISTORY[conv_id]["last_assistant"]
+            if memory_ctx.get("last_assistant"):
+                routed_assistant = memory_ctx["last_assistant"]
 
     # 6. Unsupported named scheme query (e.g. PMXYZ)
     unsupported_name = _detect_unsupported_scheme(clean_message)
@@ -699,11 +803,12 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     if last_did and last_did in SCHEME_REGISTRY:
         s_info = SCHEME_REGISTRY[last_did]
         s_name = s_info.get("current_name") or s_info.get("title")
-        _CONVERSATION_HISTORY[conv_id] = {
-            "last_scheme_id": last_did,
-            "last_scheme_name": s_name,
-            "last_assistant": routed_assistant,
-        }
+        _CONVERSATION_MEMORY.set(
+            conv_id=conv_id,
+            scheme_id=last_did,
+            scheme_name=s_name,
+            assistant=routed_assistant,
+        )
 
     # 14. Persist interaction in database (safe, non-blocking on failure)
     _save_chat_interaction_safely(conv_id, request, response)
