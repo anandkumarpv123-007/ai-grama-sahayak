@@ -135,6 +135,126 @@ def _handle_ambiguous_ntr(language: LanguageCode) -> Dict[str, Any]:
     }
 
 
+# In-memory conversation state for multi-turn contextual queries
+_CONVERSATION_HISTORY: Dict[str, Dict[str, Any]] = {}
+
+CONTEXT_PATTERNS = [
+    re.compile(r"\b(?:this|the|that)\s+scheme\b", re.IGNORECASE),
+    re.compile(r"\b(?:for\s+this|for\s+it|about\s+this|about\s+it)\b", re.IGNORECASE),
+    re.compile(r"\bhow\s+(?:do\s+i|to|can\s+i)\s+apply(?:\s+for\s+(?:this|the|that)\s+scheme)?\b", re.IGNORECASE),
+    re.compile(r"దీనికి|ఈ\s*పథక(?:ం|ానికి)|ఆ\s*పథక(?:ం|ానికి)|దీని\s*(?:గురించి|అర్హతలు|పత్రాలు|ప్రయోజనాలు)"),
+]
+
+
+def _is_contextual_query(query: str) -> bool:
+    return any(p.search(query) for p in CONTEXT_PATTERNS)
+
+
+def _detect_unsupported_scheme(query: str) -> Optional[str]:
+    """
+    Detects whether user is querying a specific named scheme outside our verified KB.
+    E.g. 'Explain about PMXYZ scheme.' -> 'PMXYZ'
+    """
+    if detect_named_schemes(query):
+        return None
+    # Match uppercase / acronym scheme names like PMXYZ scheme
+    m = re.search(r"\b([A-Z0-9_\-]{3,})\s+(?:scheme|yojana|program|పథక|పథకం)\b", query)
+    if m:
+        cand = m.group(1).strip()
+        if cand.upper() not in {"THE", "ANY", "OUR", "AP", "GOVT", "FOR"}:
+            return cand
+    return None
+
+
+def _handle_unsupported_scheme(scheme_name: str, language: LanguageCode) -> Dict[str, Any]:
+    if language == LanguageCode.TE:
+        answer = (
+            f"'{scheme_name}' పథకానికి సంబంధించి ధృవీకరించబడిన అధికారిక సమాచారం ప్రస్తుతం AI గ్రామ సహాయక్ నాలెడ్జ్ బేస్‌లో అందుబాటులో లేదు.\n\n"
+            "AI గ్రామ సహాయక్ ప్రస్తుతం ఆంధ్రప్రదేశ్ మరియు కేంద్ర ప్రభుత్వ సంక్షేమ పథకాలపై (అన్నదాత సుఖీభవ – పీఎం కిసాన్, తల్లికి వందనం, ఎన్టీఆర్ భరోసా పింఛన్, డాక్టర్ ఎన్టీఆర్ వైద్య సేవ, ఉపాధి హామీ) మాత్రమే ధృవీకరించిన సమాచారాన్ని అందిస్తుంది.\n\n"
+            "ఇతర పథకాల అధికారిక వివరాల కొరకు:\n"
+            "• ఆంధ్రప్రదేశ్ ప్రభుత్వ అధికారిక పోర్టల్ చూడండి: https://www.ap.gov.in\n"
+            "• జాతీయ సేవల పోర్టల్ చూడండి: https://india.gov.in\n"
+            "• లేదా మీ స్థానిక గ్రామ/వార్డు సచివాలయాన్ని సంప్రదించండి."
+        )
+        follow_ups = [
+            "రైతుల కోసం అన్నదాత సుఖీభవ – పీఎం కిసాన్ వివరాలు తెలుసుకోవాలనుకుంటున్నారా?",
+            "ఎన్టీఆర్ భరోసా సామాజిక భద్రత పింఛను వివరాలు కావాలా?",
+            "విద్యార్థుల కోసం తల్లికి వందనం పథకం వివరాలు కావాలా?",
+        ]
+        safety_notice = (
+            "పథకాల సలహా: ధృవీకరించబడిన ప్రభుత్వ పథకాల వివరాలు మాత్రమే ఇక్కడ అందించబడతాయి. "
+            "ఏదైనా కొత్త పథకం దరఖాస్తుకు మీ స్థానిక గ్రామ/వార్డు సచివాలయాన్ని సంప్రదించండి."
+        )
+    else:
+        answer = (
+            f"Verified official information for '{scheme_name} Scheme' is currently unavailable in the verified knowledge base of AI Grama Sahayak.\n\n"
+            "AI Grama Sahayak currently provides verified guidance exclusively on substantiated Andhra Pradesh and Central Government welfare schemes (including Annadata Sukhibhava – PM KISAN, Thalliki Vandanam, NTR Bharosa Pension, Dr. NTR Vaidya Seva, and MGNREGS).\n\n"
+            "To check official guidelines for other schemes:\n"
+            "• Visit the official Government of Andhra Pradesh portal: https://www.ap.gov.in\n"
+            "• Visit the National Government Services Portal: https://india.gov.in\n"
+            "• Inquire directly at your local Grama / Ward Sachivalayam for official government orders."
+        )
+        follow_ups = [
+            "Would you like details on Farmer Support (Annadata Sukhibhava – PM KISAN)?",
+            "Would you like details on Social Security Pensions (NTR Bharosa)?",
+            "Would you like details on School Education Support (Thalliki Vandanam)?",
+        ]
+        safety_notice = (
+            "Public Schemes Advisory: Information is provided only for verified government programs. "
+            "Always consult official government portals or your local Grama / Ward Sachivalayam."
+        )
+
+    return {
+        "answer": answer,
+        "follow_up_questions": follow_ups,
+        "safety_notice": safety_notice,
+    }
+
+
+def _handle_unspecified_scheme_application(language: LanguageCode) -> Dict[str, Any]:
+    if language == LanguageCode.TE:
+        answer = (
+            "మీరు ఏ ప్రభుత్వ సంక్షేమ పథకానికి దరఖాస్తు చేసుకోవాలనుకుంటున్నారో దయచేసి ఆ పథకం పేరును తెలియజేయండి.\n\n"
+            "ఉదాహరణకు:\n"
+            "• అన్నదాత సుఖీభవ – పీఎం కిసాన్ (రైతులకు పెట్టుబడి సాయం)\n"
+            "• తల్లికి వందనం (పాఠశాల విద్యార్థుల తల్లులకు విద్యా ప్రోత్సాహకం)\n"
+            "• ఎన్టీఆర్ భరోసా పింఛన్ (వృద్ధులు, వితంతువులు, దివ్యాంగులకు నెలవారీ పింఛను)\n"
+            "• డాక్టర్ ఎన్టీఆర్ వైద్య సేవ (నెట్‌వర్క్ ఆసుపత్రులలో ఉచిత నగదు రహిత చికిత్స)\n"
+            "• ఉపాధి హామీ పథకం (MGNREGS జాబ్ కార్డు & కూలీ పనులు)\n\n"
+            "మీకు కావలసిన పథకం పేరును తెలిపితే, ఖచ్చితమైన దరఖాస్తు విధానం, అవసరమైన పత్రాలు మరియు అధికారిక పోర్టల్స్ వివరాలను అందిస్తాను."
+        )
+        follow_ups = [
+            "అన్నదాత సుఖీభవ దరఖాస్తు విధానం తెలుసుకోవాలనుకుంటున్నారా?",
+            "తల్లికి వందనం దరఖాస్తు పద్ధతి కావాలా?",
+            "ఎన్టీఆర్ భరోసా పింఛనుకు ఎలా దరఖాస్తు చేయాలో వివరాలు కావాలా?",
+        ]
+        safety_notice = "పథకాల సలహా: ప్రభుత్వ సంక్షేమ పథకాల దరఖాస్తులను మీ అధికారిక గ్రామ/వార్డు సచివాలయంలో మాత్రమే సమర్పించండి."
+    else:
+        answer = (
+            "Which government welfare scheme would you like to apply for? "
+            "Please specify the scheme name so that I can provide the verified step-by-step application procedure, required documents, and official portals.\n\n"
+            "For example:\n"
+            "• Annadata Sukhibhava – PM KISAN (Farmer investment support)\n"
+            "• Thalliki Vandanam (School education financial assistance for mothers)\n"
+            "• NTR Bharosa Pension (Monthly social security pension for senior citizens, widows, disabled)\n"
+            "• Dr. NTR Vaidya Seva (Cashless hospitalization at empaneled network hospitals)\n"
+            "• MGNREGS (Rural wage employment and Job Card enrollment)\n\n"
+            "Please reply with the scheme name you are interested in applying for."
+        )
+        follow_ups = [
+            "Would you like to know how to apply for Annadata Sukhibhava – PM KISAN?",
+            "Would you like application steps for Thalliki Vandanam?",
+            "Would you like details on applying for NTR Bharosa Pension?",
+        ]
+        safety_notice = "Public Schemes Advisory: Always submit welfare scheme applications through your local Grama / Ward Sachivalayam or official government portals."
+
+    return {
+        "answer": answer,
+        "follow_up_questions": follow_ups,
+        "safety_notice": safety_notice,
+    }
+
+
 def _handle_nearby_service_query(
     query: str,
     language: LanguageCode,
@@ -179,8 +299,9 @@ def _handle_nearby_service_query(
     if is_local_office_intent:
         if language == LanguageCode.TE:
             answer = (
-                "AI గ్రామ సహాయక్ ప్రస్తుతం ఆంధ్రప్రదేశ్‌లోని ప్రభుత్వ ఆసుపత్రులు మరియు అత్యవసర వైద్య కేంద్రాల ధృవీకరించబడిన డైరెక్టరీని నిర్వహిస్తోంది.\n\n"
-                "మీ సమీపంలోని రైతు భరోసా కేంద్రం (RBK) లేదా గ్రామ/వార్డు సచివాలయం సేవల కోసం:\n"
+                "మీ సమీపంలోని రైతు భరోసా కేంద్రం (RBK) లేదా గ్రామ/వార్డు సచివాలయం ఖచ్చితమైన చిరునామా తెలుసుకోవడానికి, "
+                "దయచేసి మీ జిల్లా, మండలం లేదా గ్రామం పేరును తెలియజేయండి.\n\n"
+                "స్థానిక సేవల కోసం:\n"
                 "• **గ్రామ/వార్డు సచివాలయం**: మీ స్థానిక గ్రామ లేదా వార్డు సచివాలయ కేంద్రాన్ని నేరుగా సందర్శించండి లేదా అధికారిక పోర్టల్ చూడండి: https://gramawardsachivalayam.ap.gov.in\n"
                 "• **రైతు భరోసా కేంద్రం (RBK)**: మీ గ్రామ సచివాలయ పరిధిలోని గ్రామ వ్యవసాయ సహాయకుడిని (VAA) సంప్రదించండి లేదా పోర్టల్ చూడండి: https://karshak.ap.gov.in\n\n"
                 "ఈ కేంద్రాల ద్వారా సంక్షేమ పథకాల నమోదు, ఈ-పంట (e-Crop) నమోదు మరియు వివిధ ప్రభుత్వ ధ్రువపత్రాల సేవలు పొందవచ్చు."
@@ -195,8 +316,9 @@ def _handle_nearby_service_query(
             )
         else:
             answer = (
-                "AI Grama Sahayak currently maintains verified location directories for public teaching hospitals and community health centres across Andhra Pradesh.\n\n"
-                "To locate and access your nearest Rythu Bharosa Kendram (RBK) or Grama / Ward Sachivalayam:\n"
+                "To locate your nearest Rythu Bharosa Kendram (RBK) or Grama / Ward Sachivalayam, "
+                "please specify your district, mandal, or village in Andhra Pradesh.\n\n"
+                "To access local services:\n"
                 "• **Grama / Ward Sachivalayam**: Visit your local village or ward secretariat, or check the official citizen portal: https://gramawardsachivalayam.ap.gov.in\n"
                 "• **Rythu Bharosa Kendram (RBK)**: Contact your Village Agriculture Assistant (VAA) at your local village secretariat or check: https://karshak.ap.gov.in\n\n"
                 "These local centers provide official assistance for welfare scheme enrollment, e-Panta / e-Crop registration, and citizen certificates."
@@ -415,15 +537,50 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         _save_chat_interaction_safely(conv_id, request, response)
         return response
 
-    # 5. Ambiguous government scheme clarification (unnamed scheme under general schemes)
-    if request.assistant == AssistantIdentifier.SCHEMES and is_ambiguous_scheme_query(
-        clean_message, request.language
+    # 5. Contextual follow-up resolution for multi-turn conversations
+    routed_assistant = request.assistant
+    if _is_contextual_query(clean_message) and not detect_named_schemes(clean_message):
+        if conv_id in _CONVERSATION_HISTORY and _CONVERSATION_HISTORY[conv_id].get("last_scheme_name"):
+            last_scheme = _CONVERSATION_HISTORY[conv_id]["last_scheme_name"]
+            if request.language == LanguageCode.TE:
+                clean_message = re.sub(r"దీనికి|ఈ\s*పథకానికి|ఆ\s*పథకానికి", f"{last_scheme} పథకానికి", clean_message)
+                if last_scheme not in clean_message:
+                    clean_message = f"{last_scheme}: {clean_message}"
+            else:
+                clean_message = re.sub(r"\b(?:this|the|that)\s+scheme\b", f"{last_scheme} scheme", clean_message, flags=re.IGNORECASE)
+                clean_message = re.sub(r"\b(?:for\s+this|for\s+it)\b", f"for {last_scheme}", clean_message, flags=re.IGNORECASE)
+                if last_scheme.lower() not in clean_message.lower():
+                    clean_message = f"{clean_message} for {last_scheme}"
+            if _CONVERSATION_HISTORY[conv_id].get("last_assistant"):
+                routed_assistant = _CONVERSATION_HISTORY[conv_id]["last_assistant"]
+
+    # 6. Unsupported named scheme query (e.g. PMXYZ)
+    unsupported_name = _detect_unsupported_scheme(clean_message)
+    if unsupported_name:
+        unsupported_res = _handle_unsupported_scheme(unsupported_name, request.language)
+        response = ChatResponse(
+            conversation_id=conv_id,
+            answer=unsupported_res["answer"],
+            assistant=routed_assistant,
+            language=request.language,
+            sources=[],
+            needs_follow_up=True,
+            follow_up_questions=unsupported_res["follow_up_questions"],
+            safety_notice=unsupported_res["safety_notice"],
+        )
+        _save_chat_interaction_safely(conv_id, request, response)
+        return response
+
+    # 7. Ambiguous government scheme clarification (generic unnamed query under general schemes)
+    if routed_assistant == AssistantIdentifier.SCHEMES and (
+        is_ambiguous_scheme_query(clean_message, request.language)
+        or (_is_contextual_query(clean_message) and not detect_named_schemes(clean_message))
     ):
         clarification_result = get_scheme_clarification_response(request.language)
         response = ChatResponse(
             conversation_id=conv_id,
             answer=clarification_result["answer"],
-            assistant=request.assistant,
+            assistant=routed_assistant,
             language=request.language,
             sources=[],
             needs_follow_up=True,
@@ -433,8 +590,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         _save_chat_interaction_safely(conv_id, request, response)
         return response
 
-    # 6. Cross-domain specialist routing based on detected scheme
-    routed_assistant = request.assistant
+    # 8. Cross-domain specialist routing based on detected scheme
     named_doc_ids = detect_named_schemes(clean_message)
     if named_doc_ids:
         # Collect domains of all matched schemes
@@ -458,7 +614,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
             if single_dom and single_dom in domain_map:
                 routed_assistant = domain_map[single_dom]
 
-    # 7. Call internal retrieval interface owned by Member 2
+    # 9. Call internal retrieval interface owned by Member 2
     top_k_val = 6 if len(named_doc_ids) > 1 else 5
     retrieval_outcome = fetch_retrieval_context(
         query=clean_message,
@@ -469,7 +625,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         top_k=top_k_val,
     )
 
-    # 8. Technical failure safety gate: if retrieval service fails, return technical issue
+    # 10. Technical failure safety gate: if retrieval service fails, return technical issue
     if retrieval_outcome is not None and not retrieval_outcome.success:
         result = agent_router.route_and_process(
             query=clean_message,
@@ -492,7 +648,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         _save_chat_interaction_safely(conv_id, request, response)
         return response
 
-    # 9. Nearby service intent routing (Hospital or RBK / Sachivalayam)
+    # 11. Nearby service intent routing (Hospital or RBK / Sachivalayam)
     nearby_res = _handle_nearby_service_query(
         clean_message, request.language, request.state, request.district
     )
@@ -510,7 +666,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         _save_chat_interaction_safely(conv_id, request, response)
         return response
 
-    # 10. Route to specialist agent
+    # 12. Route to specialist agent
     result = agent_router.route_and_process(
         query=clean_message,
         assistant=routed_assistant,
@@ -531,7 +687,25 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         safety_notice=result["safety_notice"],
     )
 
-    # 10. Persist interaction in database (safe, non-blocking on failure)
+    # 13. Record conversation context for multi-turn contextual queries
+    last_did = named_doc_ids[0] if named_doc_ids else None
+    if not last_did and response.sources:
+        for s in response.sources:
+            s_dids = detect_named_schemes(s.title)
+            if s_dids:
+                last_did = s_dids[0]
+                break
+
+    if last_did and last_did in SCHEME_REGISTRY:
+        s_info = SCHEME_REGISTRY[last_did]
+        s_name = s_info.get("current_name") or s_info.get("title")
+        _CONVERSATION_HISTORY[conv_id] = {
+            "last_scheme_id": last_did,
+            "last_scheme_name": s_name,
+            "last_assistant": routed_assistant,
+        }
+
+    # 14. Persist interaction in database (safe, non-blocking on failure)
     _save_chat_interaction_safely(conv_id, request, response)
 
     return response
