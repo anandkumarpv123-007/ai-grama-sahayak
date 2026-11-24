@@ -24,7 +24,10 @@ MAX_EXTRACTED_TEXT_LENGTH = 100_000
 
 
 def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
-    """Extract text from PDF binary content using pypdf with safe resource limits.
+    """Extract text from PDF binary content with safe resource limits.
+
+    Prefers PyMuPDF (fitz) for superior structural layout and whitespace handling,
+    falling back to pypdf when PyMuPDF is unavailable.
 
     Enforces:
     - Maximum page processing limit (MAX_PDF_PAGES = 20)
@@ -36,18 +39,11 @@ def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
     """
     warnings: List[str] = []
 
+    # 1. Attempt PyMuPDF (fitz) first
     try:
-        from pypdf import PdfReader  # type: ignore
-    except ImportError:
-        warnings.append(
-            "pypdf extraction library is not available in the runtime environment. "
-            "Unable to extract text from PDF document. Manual physical verification is required."
-        )
-        return "", warnings
-
-    try:
-        reader = PdfReader(io.BytesIO(content))
-        total_pages = len(reader.pages)
+        import fitz  # PyMuPDF
+        doc = fitz.open(stream=content, filetype="pdf")
+        total_pages = len(doc)
 
         if total_pages == 0:
             warnings.append("The uploaded PDF document contains 0 pages.")
@@ -59,12 +55,13 @@ def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
                 f"Only the first {MAX_PDF_PAGES} pages were processed."
             )
 
-        pages_to_process = reader.pages[:MAX_PDF_PAGES]
         pages_text: List[str] = []
         total_chars = 0
+        pages_to_process = min(total_pages, MAX_PDF_PAGES)
 
-        for page in pages_to_process:
-            txt = page.extract_text() or ""
+        for i in range(pages_to_process):
+            page = doc[i]
+            txt = page.get_text() or ""
             txt_clean = txt.strip()
             if txt_clean:
                 if total_chars + len(txt_clean) > MAX_EXTRACTED_TEXT_LENGTH:
@@ -74,6 +71,50 @@ def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
                         f"Extracted document text exceeded the maximum size limit of "
                         f"{MAX_EXTRACTED_TEXT_LENGTH} characters and was truncated."
                     )
+                    break
+                pages_text.append(txt_clean)
+                total_chars += len(txt_clean)
+
+        combined_text = "\n".join(pages_text).strip()
+        if combined_text:
+            return combined_text, warnings
+
+        # If combined text is empty in PyMuPDF, check if pypdf has any text layer
+    except Exception as e:
+        logger.debug("PyMuPDF extraction unavailable or failed: %s; falling back to pypdf", str(e))
+
+    # 2. Fallback to pypdf
+    try:
+        from pypdf import PdfReader  # type: ignore
+        reader = PdfReader(io.BytesIO(content))
+        total_pages = len(reader.pages)
+
+        if total_pages == 0:
+            warnings.append("The uploaded PDF document contains 0 pages.")
+            return "", warnings
+
+        if total_pages > MAX_PDF_PAGES and not any("maximum allowed limit" in w for w in warnings):
+            warnings.append(
+                f"PDF exceeds the maximum allowed limit of {MAX_PDF_PAGES} pages (found {total_pages}). "
+                f"Only the first {MAX_PDF_PAGES} pages were processed."
+            )
+
+        pages_to_process = reader.pages[:MAX_PDF_PAGES]
+        pages_text = []
+        total_chars = 0
+
+        for page in pages_to_process:
+            txt = page.extract_text() or ""
+            txt_clean = txt.strip()
+            if txt_clean:
+                if total_chars + len(txt_clean) > MAX_EXTRACTED_TEXT_LENGTH:
+                    allowed = MAX_EXTRACTED_TEXT_LENGTH - total_chars
+                    pages_text.append(txt_clean[:allowed])
+                    if not any("exceeded the maximum size limit" in w for w in warnings):
+                        warnings.append(
+                            f"Extracted document text exceeded the maximum size limit of "
+                            f"{MAX_EXTRACTED_TEXT_LENGTH} characters and was truncated."
+                        )
                     break
                 pages_text.append(txt_clean)
                 total_chars += len(txt_clean)
@@ -90,7 +131,7 @@ def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
         return combined_text, warnings
 
     except Exception as e:
-        logger.warning("pypdf parsing failed: %s", str(e))
+        logger.warning("PDF parsing failed: %s", str(e))
         warnings.append(
             "Failed to parse PDF document structure. The file may be encrypted, corrupted, or unsupported. "
             "Manual physical verification is required."

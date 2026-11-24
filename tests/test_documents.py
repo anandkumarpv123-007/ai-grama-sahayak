@@ -293,6 +293,199 @@ class TestDocumentAnalysis(unittest.TestCase):
         finally:
             pypdf.PdfReader = orig_reader
 
+    # --- 10 Document Acceptance Test Matrix ---
+
+    def test_acceptance_1_digital_income_certificate_pdf(self):
+        """1. Digital income certificate PDF: correctly auto-detected and extracted."""
+        pdf_path = self.samples_dir / "synthetic_income_certificate.pdf"
+        with open(pdf_path, "rb") as f:
+            content = f.read()
+
+        result = analyze_document_content(
+            content=content,
+            filename="income_cert.pdf",
+            content_type="application/pdf",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(result["document_type"], "income_certificate")
+        self.assertEqual(result["checklist_status"], "complete")
+        self.assertEqual(result["extracted_fields"]["certificate_number"], "IC0123456789")
+        self.assertEqual(result["extracted_fields"]["applicant_name"], "K. Rama Rao")
+        self.assertEqual(result["extracted_fields"]["annual_income"], "Rs. 75000")
+
+    def test_acceptance_2_scanned_income_certificate_pdf(self):
+        """2. Scanned income certificate PDF: honest unverified status + manual selection works."""
+        pdf_path = self.samples_dir / "synthetic_scanned_unreadable.pdf"
+        with open(pdf_path, "rb") as f:
+            content = f.read()
+
+        # In auto-detect mode, unreadable scanned PDF is classified as general_document with warning
+        auto_res = analyze_document_content(
+            content=content,
+            filename="scanned_income.pdf",
+            content_type="application/pdf",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(auto_res["document_type"], "general_document")
+        self.assertEqual(auto_res["checklist_status"], "unverified_or_incomplete")
+        self.assertTrue(any("scanned" in w.lower() or "ocr" in w.lower() for w in auto_res["warnings"]))
+
+        # When citizen manually selects "income_certificate", respects choice
+        manual_res = analyze_document_content(
+            content=content,
+            filename="scanned_income.pdf",
+            content_type="application/pdf",
+            document_type_hint="income_certificate",
+        )
+        self.assertEqual(manual_res["document_type"], "income_certificate")
+        self.assertEqual(manual_res["checklist_status"], "unverified_or_incomplete")
+        self.assertIn("certificate_number", manual_res["missing_fields"])
+
+    def test_acceptance_3_income_certificate_image(self):
+        """3. Income certificate image: honest unverified status when OCR unavailable + allows manual selection."""
+        png_path = self.samples_dir / "synthetic_income_cert.png"
+        with open(png_path, "rb") as f:
+            content = f.read()
+
+        res = analyze_document_content(
+            content=content,
+            filename="income.png",
+            content_type="image/png",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(res["document_type"], "general_document")
+        self.assertEqual(res["checklist_status"], "unverified_or_incomplete")
+        self.assertTrue(any("ocr" in w.lower() or "unverified" in w.lower() for w in res["warnings"]))
+
+    def test_acceptance_4_synthetic_aadhaar_front(self):
+        """4. Synthetic Aadhaar front: auto-detected as aadhaar_card with masked UID, name, and DOB."""
+        from document_samples.generate_samples import make_pdf
+        front_pdf = make_pdf([
+            "GOVERNMENT OF INDIA",
+            "Unique Identification Authority of India",
+            "Mera Aadhaar Meri Pehchan",
+            "Name: K. Rama Rao",
+            "DOB: 14/06/1992",
+            "Gender: Male",
+            "4589 1234 5678",
+        ])
+        result = analyze_document_content(
+            content=front_pdf,
+            filename="aadhaar_front.pdf",
+            content_type="application/pdf",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(result["document_type"], "aadhaar_card")
+        self.assertEqual(result["extracted_fields"]["aadhaar_number"], "XXXX-XXXX-5678")
+        self.assertIn("card_side", result["extracted_fields"])
+        self.assertEqual(result["extracted_fields"]["card_side"], "front")
+        self.assertEqual(result["checklist_status"], "complete")
+
+    def test_acceptance_5_synthetic_aadhaar_back(self):
+        """5. Synthetic Aadhaar back: auto-detected as aadhaar_card with address, district, masked UID."""
+        from document_samples.generate_samples import make_pdf
+        back_pdf = make_pdf([
+            "Unique Identification Authority of India",
+            "Address: S/O K. Venkata Rao, D.No 1-23, Main Road",
+            "Samalkota, Kakinada, Andhra Pradesh - 533440",
+            "9876 5432 1098",
+            "1947 help@uidai.gov.in www.uidai.gov.in",
+        ])
+        result = analyze_document_content(
+            content=back_pdf,
+            filename="aadhaar_back.pdf",
+            content_type="application/pdf",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(result["document_type"], "aadhaar_card")
+        self.assertEqual(result["extracted_fields"]["aadhaar_number"], "XXXX-XXXX-1098")
+        self.assertEqual(result["extracted_fields"]["card_side"], "back")
+        self.assertEqual(result["extracted_fields"]["district"], "Kakinada")
+        self.assertEqual(result["checklist_status"], "partially_complete")
+
+    def test_acceptance_6_caste_certificate(self):
+        """6. Caste certificate: auto-detected with certificate number, category, and issue date."""
+        pdf_path = self.samples_dir / "synthetic_caste_certificate.pdf"
+        with open(pdf_path, "rb") as f:
+            content = f.read()
+
+        result = analyze_document_content(
+            content=content,
+            filename="caste.pdf",
+            content_type="application/pdf",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(result["document_type"], "caste_certificate")
+        self.assertEqual(result["extracted_fields"]["certificate_number"], "CGC9876543210")
+        self.assertEqual(result["extracted_fields"]["caste_category"], "BC-A")
+        self.assertEqual(result["checklist_status"], "complete")
+
+    def test_acceptance_7_rice_card(self):
+        """7. Rice card: auto-detected with card number and head of family."""
+        pdf_path = self.samples_dir / "synthetic_ration_card.pdf"
+        with open(pdf_path, "rb") as f:
+            content = f.read()
+
+        result = analyze_document_content(
+            content=content,
+            filename="rice_card.pdf",
+            content_type="application/pdf",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(result["document_type"], "ration_card")
+        self.assertEqual(result["extracted_fields"]["ration_card_number"], "WAP041234567890")
+        self.assertEqual(result["extracted_fields"]["head_of_family"], "M. Subba Rao")
+        self.assertEqual(result["checklist_status"], "complete")
+
+    def test_acceptance_8_blurry_document(self):
+        """8. Blurry document: image without readable text returns honest unverified state."""
+        from PIL import Image, ImageFilter
+        import io
+        img = Image.new("RGB", (300, 100), color=(200, 200, 200))
+        img = img.filter(ImageFilter.GaussianBlur(10))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        blurry_bytes = buf.getvalue()
+
+        result = analyze_document_content(
+            content=blurry_bytes,
+            filename="blurry.jpg",
+            content_type="image/jpeg",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(result["document_type"], "general_document")
+        self.assertEqual(result["checklist_status"], "unverified_or_incomplete")
+
+    def test_acceptance_9_unrelated_document(self):
+        """9. Unrelated document: does not force incorrect category; classifies as general_document."""
+        from document_samples.generate_samples import make_pdf
+        unrelated_pdf = make_pdf([
+            "UNIVERSITY SPORTS BOARD",
+            "ANNUAL CRICKET TOURNAMENT SCHEDULE 2026",
+            "Match 1: Team Alpha vs Team Beta",
+            "Venue: Main Stadium, Hyderabad",
+            "Date: 15-03-2026",
+        ])
+        result = analyze_document_content(
+            content=unrelated_pdf,
+            filename="cricket_schedule.pdf",
+            content_type="application/pdf",
+            document_type_hint="Auto Detect",
+        )
+        self.assertEqual(result["document_type"], "general_document")
+        self.assertNotEqual(result["document_type"], "income_certificate")
+        self.assertNotEqual(result["document_type"], "aadhaar_card")
+
+    def test_acceptance_10_empty_or_invalid_file(self):
+        """10. Empty or invalid file: rejected immediately with proper exception and code."""
+        with self.assertRaises(DocumentAnalysisError) as ctx_empty:
+            analyze_document_content(b"", "empty.pdf", "application/pdf")
+        self.assertEqual(ctx_empty.exception.code, "EMPTY_FILE")
+
+        with self.assertRaises(InvalidFileTypeError) as ctx_inv:
+            analyze_document_content(b"not a pdf or image", "bad.pdf", "application/pdf")
+        self.assertEqual(ctx_inv.exception.code, "INVALID_FILE_TYPE")
+
 
 if __name__ == "__main__":
     unittest.main()
