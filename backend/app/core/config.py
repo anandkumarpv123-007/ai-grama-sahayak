@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     ]
 
     # Database Configuration (PostgreSQL)
+    DATABASE_ENABLED: bool = Field(
+        default=True,
+        description="Explicit toggle for database connection and audit persistence",
+    )
+    DATABASE_AUDIT_ENABLED: bool = Field(
+        default=True,
+        description="Explicit toggle for optional eligibility audit logging in PostgreSQL",
+    )
     DATABASE_URL: Optional[str] = Field(
         default=None,
         description="Full PostgreSQL connection URL (e.g. postgresql+psycopg://user:pass@host:5432/dbname)",
