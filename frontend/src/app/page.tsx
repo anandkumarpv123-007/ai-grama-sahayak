@@ -10,6 +10,7 @@ import DocumentAnalysis from "../components/DocumentAnalysis";
 import NearbyServices from "../components/NearbyServices";
 import GrievanceDrafting from "../components/GrievanceDrafting";
 import AudioSpeakButton from "../components/AudioSpeakButton";
+import SchemeEligibility from "../components/SchemeEligibility";
 
 type SpeechRecognitionAlternativeLike = {
   transcript: string;
@@ -93,6 +94,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("chat");
   const [language, setLanguage] = useState("Telugu");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [showEligibility, setShowEligibility] = useState(false);
   const [question, setQuestion] = useState("");
   const [voiceMessage, setVoiceMessage] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -436,21 +438,39 @@ export default function Home() {
               </p>
 
               <button
-                className="voice-button"
+                className={`voice-button ${isListening ? "listening" : ""}`}
                 onClick={startVoiceInput}
                 aria-label={isListening ? "Stop listening" : "Speak your question"}
               >
                 <span className="mic-icon">
-                  {isListening ? "🔴" : "🎙️"}
+                  {isListening ? (
+                    <span className="recording-indicator" aria-hidden="true">
+                      <span className="recording-wave-bar"></span>
+                      <span className="recording-wave-bar"></span>
+                      <span className="recording-wave-bar"></span>
+                    </span>
+                  ) : (
+                    "🎙️"
+                  )}
                 </span>
                 <span>
                   <strong>
-                    {isListening ? "Listening..." : "Speak your question"}
+                    {isListening
+                      ? language === "Telugu"
+                        ? "రికార్డింగ్ అవుతోంది... మాట్లాడండి"
+                        : "Listening... Speak now"
+                      : language === "Telugu"
+                        ? "మీ ప్రశ్నను మాట్లాడండి"
+                        : "Speak your question"}
                   </strong>
                   <small>
                     {isListening
-                      ? "Tap to stop recording"
-                      : "Tap to ask using your voice"}
+                      ? language === "Telugu"
+                        ? "రికార్డింగ్ ఆపడానికి తాకండి"
+                        : "Tap to stop recording"
+                      : language === "Telugu"
+                        ? "వాయిస్ ఉపయోగించి అడగడానికి తాకండి"
+                        : "Tap to ask using your voice"}
                   </small>
                 </span>
               </button>
@@ -486,7 +506,14 @@ export default function Home() {
                   className={`category-card ${category.color} ${
                     selectedCategory === category.title ? "selected" : ""
                   }`}
-                  onClick={() => setSelectedCategory(category.title)}
+                  onClick={() => {
+                    setSelectedCategory(category.title);
+                    if (category.title === "Government Schemes") {
+                      setShowEligibility(true);
+                    } else {
+                      setShowEligibility(false);
+                    }
+                  }}
                 >
                   <div className="category-icon">{category.icon}</div>
 
@@ -507,7 +534,45 @@ export default function Home() {
                   <strong>{selectedCategory}</strong> selected. You can now ask your
                   question below.
                 </p>
-                <button onClick={() => setSelectedCategory("")}>Change</button>
+                <button
+                  onClick={() => {
+                    setSelectedCategory("");
+                    setShowEligibility(false);
+                  }}
+                >
+                  Change
+                </button>
+              </div>
+            )}
+
+            {/* Quick Action: Check Scheme Eligibility */}
+            <div className="quick-action-row">
+              <button
+                type="button"
+                className={`quick-eligibility-btn ${selectedCategory === "Government Schemes" && showEligibility ? "active" : ""}`}
+                onClick={() => {
+                  if (selectedCategory === "Government Schemes" && showEligibility) {
+                    setShowEligibility(false);
+                  } else {
+                    setSelectedCategory("Government Schemes");
+                    setShowEligibility(true);
+                  }
+                }}
+              >
+                <span>📋</span>
+                <span>
+                  {language === "Telugu"
+                    ? "పథకం అర్హతను తనిఖీ చేయండి (Check Eligibility)"
+                    : "Check Scheme Eligibility"}
+                </span>
+                <span>{selectedCategory === "Government Schemes" && showEligibility ? "▲" : "▼"}</span>
+              </button>
+            </div>
+
+            {/* Dedicated Eligibility Evaluation View within Government Schemes */}
+            {(selectedCategory === "Government Schemes" && showEligibility) && (
+              <div className="embedded-eligibility-section">
+                <SchemeEligibility language={language} />
               </div>
             )}
           </section>
