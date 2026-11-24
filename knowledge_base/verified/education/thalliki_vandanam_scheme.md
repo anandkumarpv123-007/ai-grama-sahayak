@@ -15,28 +15,27 @@ scheme_category: "School Education Incentive and Dropout Prevention"
 # Thalliki Vandanam Scheme (తల్లికి వందనం పథకం)
 
 ## 1. Overview and Core Purpose (లక్ష్యం మరియు పథక ఉద్దేశం)
-Thalliki Vandanam is the flagship educational financial assistance scheme of the Government of Andhra Pradesh, succeeding and expanding the erstwhile Jagananna Amma Vodi scheme. The primary objective is to eradicate school dropouts, incentivize parents to enroll their children in schools, and ensure that poverty never prevents a child from completing school education from Class I through Intermediate (Class XII).
-తల్లికి వందనం పథకం ఆంధ్రప్రదేశ్ ప్రభుత్వ పాఠశాల విద్యాశాఖ ద్వారా అమలు చేయబడుతున్న ప్రధాన విద్యా ప్రోత్సాహక పథకం. గతంలో ఉన్న 'అమ్మ ఒడి' పథకం స్థానంలో అమలవుతున్న ఈ పథకం ద్వారా పిల్లలను బడికి పంపే తల్లులకు ఏటా ఆర్థిక సహాయం అందించి, డ్రాపౌట్లను అరికట్టడం మరియు 1 నుండి 12వ తరగతి (ఇంటర్మీడియట్) వరకు నాణ్యమైన విద్యను అందించడం దీని ప్రధాన ఉద్దేశం.
+Thalliki Vandanam is an educational financial support framework of the Government of Andhra Pradesh, succeeding and reforming previous school assistance frameworks (such as the erstwhile Amma Vodi framework). The objective is to encourage school education, incentivize mothers and guardians, and prevent dropouts from Class I through Intermediate (Class XII).
+తల్లికి వందనం పథకం ఆంధ్రప్రదేశ్ ప్రభుత్వం పాఠశాల విద్యాశాఖ ద్వారా రూపకల్పన చేస్తున్న ప్రధాన విద్యా ప్రోత్సాహక పథకం. గతంలో ఉన్న అమ్మ ఒడి స్థానంలో అమలులోకి వస్తున్న ఈ కార్యక్రమం ద్వారా పిల్లలను బడికి పంపే తల్లులకు తోడ్పాటు అందించి, డ్రాపౌట్లను అరికట్టడం మరియు 1 నుండి 12వ తరగతి (ఇంటర్మీడియట్) వరకు నాణ్యమైన విద్యాభ్యాసానికి తోడ్పడటం దీని ముఖ్య ఉద్దేశం.
 
-## 2. Financial Assistance Structure (ఆర్థిక సహాయం మరియు కేటాయింపులు)
-* **Total Annual Assistance:** Rs. 15,000 per academic year per eligible school/college-going child.
-* **Child Limit:** Unlike earlier limitations, the scheme provides assistance for every eligible child in the family with **no cap on the number of children**.
-* **Disbursement Breakdown:**
-  * **Rs. 13,000** is deposited directly via Direct Benefit Transfer (DBT) into the unencumbered, Aadhaar-seeded bank account of the mother (or recognized legal guardian if the mother is deceased).
-  * **Rs. 2,000** is deducted at source and pooled into the School Sanitation and Maintenance Fund (TMF/SMF) to maintain clean restrooms, safe drinking water, and infrastructure in government/aided schools.
-* అర్హత గల ప్రతి విద్యార్థికి ఏడాదికి మొత్తం రూ. 15,000 మంజూరవుతుంది. కుటుంబంలో ఎంతమంది పిల్లలు చదువుతుంటే అంతమందికీ ఈ పథకం వర్తిస్తుంది. ఇందులో రూ. 13,000 నేరుగా తల్లి ఆధార్ లింక్డ్ బ్యాంక్ ఖాతాకు జమ అవుతుంది, మిగిలిన రూ. 2,000 పాఠశాలల్లో పరిశుభ్రత, తాగునీరు మరియు నిర్వహణ నిధికి కేటాయించబడుతుంది.
+## 2. Financial Assistance Framework (ఆర్థిక సహాయం మరియు నిబంధనలు)
+* **Educational Financial Support Framework:** The policy provides educational financial support for students enrolled in Classes I to XII (including Intermediate) meeting prescribed attendance norms, with specific disbursement amounts, deductions, and guidelines officially notified by the School Education Department.
+* **Child Coverage Framework:** Policy guidelines aim to support eligible school and junior college students in the family who meet institutional enrollment and attendance benchmarks.
+* **Disbursement Modality:** Financial assistance is routed via Direct Benefit Transfer (DBT) into the verified, Aadhaar-seeded bank account of the mother (or recognized legal guardian if the mother is deceased), subject to departmental operational norms.
+* **Operational Reality (ముఖ్య గమనిక):** Specific disbursement amounts, installment schedules, and approved beneficiary lists are governed by official operational guidelines and administrative orders issued by the School Education Department for the academic year; assistance details are subject to published notifications and should not be treated as assured payments until officially notified.
+* **తెలుగు వివరణ:** పాఠశాల విద్యాశాఖ నిబంధనల ప్రకారం 1 నుండి 12వ తరగతి (ఇంటర్మీడియట్) వరకు చదువుతూ, నిర్ణీత హాజరు నిబంధనలు పాటించే అర్హులైన విద్యార్థులకు విద్యా ప్రోత్సాహక ఆర్థిక సహాయం అందించేలా విధివిధానాలు అమలు చేయబడతాయి. చెల్లింపుల మొత్తం, విడతలు మరియు మార్గదర్శకాలు పాఠశాల విద్యాశాఖ అధికారిక ఉత్తర్వుల ద్వారా తెలియజేయబడతాయి. నిధులు డీబీటీ (DBT) ద్వారా తల్లి ఆధార్-ఎన్‌పీసీఐ అనుసంధాన బ్యాంక్ ఖాతాకు జమ అవుతాయి. తుది లబ్ధిదారుల జాబితా మరియు మంజూరు వివరాలు అధికారిక ఉత్తర్వులపై ఆధారపడి ఉంటాయి.
 
 ## 3. Eligibility Criteria (అర్హతలు మరియు నిబంధనలు)
-* **Student Education Level:** The student must be studying in Classes I to XII (including Intermediate 1st and 2nd year) in recognized Government, Aided, Private Unaided, or Residential Schools / Junior Colleges in Andhra Pradesh.
-* **Attendance Requirement:** Mandatory minimum of **75% school/college attendance** recorded during the academic year.
+* **Student Education Level:** The student must be enrolled and studying in Classes I to XII (including Intermediate 1st and 2nd year) in recognized Government, Aided, Private Unaided, or Residential Schools / Junior Colleges in Andhra Pradesh.
+* **Attendance Benchmark:** Standard school education frameworks mandate a minimum attendance benchmark (such as 75% school/college attendance) recorded during the academic year.
 * **Residency:** Mother/guardian and the student must be permanent residents of Andhra Pradesh.
-* **Ration / Rice Card:** Possession of a valid Rice Card / BPL card.
-* **Household Income & Assets:** Rural monthly income up to Rs. 10,000 (urban up to Rs. 12,000); agricultural landholding below 35 acres; urban property less than 1,000 sq. ft.; residential electricity consumption below 300 units/month.
-* **Exclusions:** Regular government employees, government pensioners, and income tax payees are excluded.
-* అర్హతలు: విద్యార్థి ఆంధ్రప్రదేశ్‌లోని గుర్తింపు పొందిన పాఠశాల లేదా జూనియర్ కళాశాలలో 1 నుండి 12వ తరగతి చదువుతూ ఉండాలి. కనీసం 75% హాజరు తప్పనిసరి. తెల్ల రేషన్ కార్డు/రైస్ కార్డు ఉండాలి. ప్రభుత్వ ఉద్యోగులు, ఆదాయపు పన్ను చెల్లించేవారు మినహాయింపు.
+* **Ration / Rice Card:** Possession of a valid Rice Card / BPL card as verified by the Grama / Ward Sachivalayam database.
+* **Household Income & Assets:** Household socio-economic verification is conducted based on official state BPL parameters; regular government employees and income tax payees are excluded.
+* **Approval Condition:** Meeting preliminary criteria establishes eligibility for verification; final sanction depends on school database matching (Child Info / UDISE+) and administrative approval.
+* **తెలుగు వివరణ:** విద్యార్థి ఆంధ్రప్రదేశ్‌లోని గుర్తింపు పొందిన పాఠశాల లేదా జూనియర్ కళాశాలలో 1 నుండి 12వ తరగతి చదువుతూ ఉండాలి. సాధారణంగా కనీసం 75% పాఠశాల హాజరు ఉండాలి. చెల్లుబాటు అయ్యే రైస్ కార్డు ఉండాలి మరియు కుటుంబం నిర్ణీత ఆదాయ నిబంధనలకు లోబడి ఉండాలి. ప్రభుత్వ ఉద్యోగులు, ఆదాయపు పన్ను చెల్లించేవారు మినహాయింపు. పాఠశాలల చైల్డ్ ఇన్ఫో డేటాతో వివరాలు సరిపోలిన తర్వాతే తుది మంజూరు లభిస్తుంది.
 
 ## 4. Application & Verification Modalities (నమోదు మరియు తనిఖీ విధానం)
-* No separate offline application form is required for students enrolled in recognized schools.
 * Student enrollment and attendance data are synchronized directly from the School Child Info database and the Grama/Ward Sachivalayam Beneficiary Management (GSWS-NBM) portal.
-* Mothers can check their eligibility status and bank account seeding status at their local Grama/Ward Sachivalayam or online at `https://schooledu.ap.gov.in` and `https://gsws-nbm.ap.gov.in`.
-* ప్రత్యేకంగా దరఖాస్తు చేసుకోవాల్సిన అవసరం లేదు. పాఠశాలల నుంచి చైల్డ్ ఇన్ఫో డేటా ఆధారంగా సచివాలయాల ద్వారా లబ్ధిదారుల జాబితా తయారవుతుంది. సచివాలయంలో లేదా విద్యాశాఖ వెబ్‌సైట్‌లో స్టేటస్ చెక్ చేసుకోవచ్చు.
+* Mothers and guardians can verify eligibility status, attendance records, and bank account seeding status at their local **Grama / Ward Sachivalayam (గ్రామ/వార్డు సచివాలయం)** or online at official portals:
+  * Department Portal: `https://schooledu.ap.gov.in`
+  * NBM Portal: `https://gsws-nbm.ap.gov.in`
