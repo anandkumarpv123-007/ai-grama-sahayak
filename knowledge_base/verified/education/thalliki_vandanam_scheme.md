@@ -34,8 +34,16 @@ Thalliki Vandanam is an educational financial support framework of the Governmen
 * **Approval Condition:** Meeting preliminary criteria establishes eligibility for verification; final sanction depends on school database matching (Child Info / UDISE+) and administrative approval.
 * **తెలుగు వివరణ:** విద్యార్థి ఆంధ్రప్రదేశ్‌లోని గుర్తింపు పొందిన పాఠశాల లేదా జూనియర్ కళాశాలలో 1 నుండి 12వ తరగతి చదువుతూ ఉండాలి. సాధారణంగా కనీసం 75% పాఠశాల హాజరు ఉండాలి. చెల్లుబాటు అయ్యే రైస్ కార్డు ఉండాలి మరియు కుటుంబం నిర్ణీత ఆదాయ నిబంధనలకు లోబడి ఉండాలి. ప్రభుత్వ ఉద్యోగులు, ఆదాయపు పన్ను చెల్లించేవారు మినహాయింపు. పాఠశాలల చైల్డ్ ఇన్ఫో డేటాతో వివరాలు సరిపోలిన తర్వాతే తుది మంజూరు లభిస్తుంది.
 
-## 4. Application & Verification Modalities (నమోదు మరియు తనిఖీ విధానం)
-* Student enrollment and attendance data are synchronized directly from the School Child Info database and the Grama/Ward Sachivalayam Beneficiary Management (GSWS-NBM) portal.
-* Mothers and guardians can verify eligibility status, attendance records, and bank account seeding status at their local **Grama / Ward Sachivalayam (గ్రామ/వార్డు సచివాలయం)** or online at official portals:
-  * Department Portal: `https://schooledu.ap.gov.in`
+## 4. Application, Documents & Grievance Channels (నమోదు, పత్రాలు మరియు ఫిర్యాదుల పరిష్కారం)
+* **Application & Verification:** Student enrollment and attendance data are synchronized directly from the School Child Info / UDISE+ database and the Grama/Ward Sachivalayam Beneficiary Management (GSWS-NBM) portal under the supervision of the school Headmaster and Welfare & Education Assistant (WEA).
+* **Required Documents:**
+  1. Student Aadhaar Card and Mother/Guardian Aadhaar Card.
+  2. Valid BPL Rice Card / Ration Card.
+  3. Mother's active Aadhaar-seeded, NPCI-mapped bank account passbook.
+  4. School enrollment ID / Child Info record and attendance certificate.
+* **Official Portals and Helplines:**
+  * School Education Portal: `https://schooledu.ap.gov.in`
   * NBM Portal: `https://gsws-nbm.ap.gov.in`
+  * School Education Toll-Free Helpline: **1800-425-6776** / Grievance Helpline (Spandana): **1902**.
+* **Operational Note:** Sanction requires school data verification and minimum 75% attendance; mothers must ensure Aadhaar-NPCI bank linking.
+* **తెలుగు వివరణ:** దరఖాస్తు మరియు పరిశీలన విధానం: విద్యార్థుల నమోదు మరియు 75% హాజరు వివరాలు పాఠశాల చైల్డ్ ఇన్ఫో (Child Info / UDISE+) మరియు గ్రామ/వార్డు సచివాలయ బెనిఫిషియరీ మేనేజ్‌మెంట్ (GSWS-NBM) పోర్టల్ ద్వారా ఆటోమేటిక్‌గా సరిపోల్చబడతాయి. ప్రధానోపాధ్యాయులు (HM) మరియు సచివాలయ సంక్షేమ, విద్యా సహాయకులు (WEA) క్షేత్రస్థాయి విచారణ చేపడతారు. అవసరమైన పత్రాలు: 1. విద్యార్థి మరియు తల్లి ఆధార్ కార్డులు, 2. రైస్ కార్డు, 3. తల్లి పేరు మీద ఉన్న ఆధార్-ఎన్‌పీసీఐ అనుసంధాన బ్యాంక్ పాస్‌బుక్, 4. పాఠశాల చైల్డ్ ఇన్ఫో ఐడీ. తల్లులు తమ అర్హత మరియు బ్యాంక్ సీడింగ్ స్థితిని గ్రామ/వార్డు సచివాలయంలో లేదా schooledu.ap.gov.in పోర్టల్‌లో పరిశీలించవచ్చు. ఏవైనా సమస్యలు లేదా సందేహాలు ఉంటే విద్యాశాఖ టోల్-ఫ్రీ నంబర్ 1800-425-6776 లేదా స్పందన 1902 కు కాల్ చేయవచ్చు.

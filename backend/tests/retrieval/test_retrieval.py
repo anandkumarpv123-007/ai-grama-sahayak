@@ -287,3 +287,78 @@ def test_telugu_and_english_pension_amount_ranking():
     assert "SADAREM" in en_results[0]["text"]
     assert "6,000" not in en_results[0]["text"]
     assert "10,000" not in en_results[0]["text"]
+
+
+# ==============================================================================
+# SPRINT ROUND 1: BILINGUAL KNOWLEDGE QUALITY & COVERAGE AUDIT TESTS
+# ==============================================================================
+
+def test_all_14_documents_bilingual_coverage_and_quality():
+    """
+    Sprint Round 1 Audit Test:
+    Ensures all 14 production documents across Agriculture (4), Education (3),
+    Healthcare (3), and Schemes (4) have complete bilingual parity, verified metadata,
+    valid chunking, and zero language leakage.
+    """
+    import glob
+    import re
+    from pathlib import Path
+    from app.services.retrieval.ingestion import DocumentIngestionEngine
+    from app.services.retrieval.chunking import MarkdownChunker
+    from app.agents.base import BaseSpecialistAgent
+    from app.schemas.common import AssistantIdentifier
+
+    class DummyAuditAgent(BaseSpecialistAgent):
+        def process_query(self, query): pass
+        def get_default_follow_up_questions(self, lang): return []
+        def get_safety_notice(self, lang): return ""
+
+    agent = DummyAuditAgent(AssistantIdentifier.AGRICULTURE, "test", "agriculture", "desc")
+    engine = DocumentIngestionEngine()
+    chunker = MarkdownChunker()
+
+    kb_dir = Path(__file__).resolve().parent.parent.parent.parent / "knowledge_base" / "verified"
+    files = sorted(glob.glob(str(kb_dir / "**" / "*.md"), recursive=True))
+
+    assert len(files) == 14, f"Expected 14 verified knowledge-base documents, found {len(files)}"
+
+    domain_counts = {"agriculture": 0, "education": 0, "healthcare": 0, "schemes": 0}
+
+    for fpath in files:
+        doc = engine.ingest_file(fpath)
+        assert doc.domain in domain_counts, f"Unknown domain {doc.domain} in {fpath}"
+        domain_counts[doc.domain] += 1
+
+        # Metadata validation
+        assert doc.title, f"Missing title in {fpath}"
+        assert doc.url.startswith("https://") or doc.url.startswith("http://"), f"Invalid URL in {fpath}"
+        assert doc.publisher, f"Missing publisher in {fpath}"
+        assert doc.verified_at, f"Missing verified_at in {fpath}"
+        assert doc.status in ["active", "transitioning"], f"Invalid status in {fpath}"
+        assert doc.language == "bilingual", f"Expected bilingual language in {fpath}"
+
+        # Ingestion & chunking check
+        chunks = chunker.chunk_document(doc)
+        assert len(chunks) >= 3, f"Expected at least 3 chunks for {doc.doc_id}, got {len(chunks)}"
+
+        # Content completeness: Telugu presence in document
+        total_te_chars = len(re.findall(r"[\u0C00-\u0C7F]", doc.content))
+        assert total_te_chars >= 150, f"Insufficient Telugu coverage in {doc.doc_id}: {total_te_chars} chars"
+
+        # Language isolation & formatting check
+        for c in chunks:
+            te_fmt = agent._format_single_chunk({"text": c.text}, is_te=True)
+            en_fmt = agent._format_single_chunk({"text": c.text}, is_te=False)
+
+            # English text must not leak Telugu sentences
+            for line in en_fmt.split("\n"):
+                te_in_en = len(re.findall(r"[\u0C00-\u0C7F]", line))
+                assert te_in_en < 5 or (te_in_en <= len(line) * 0.10), (
+                    f"Telugu script leaked into English response in {c.metadata.get('chunk_id')}: {line}"
+                )
+
+    # Domain count verification
+    assert domain_counts["agriculture"] == 4
+    assert domain_counts["education"] == 3
+    assert domain_counts["healthcare"] == 3
+    assert domain_counts["schemes"] == 4

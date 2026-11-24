@@ -38,7 +38,17 @@ The Government of Andhra Pradesh operates comprehensive post-matric financial su
 * **Exclusions:** Four-wheeler ownership (commercial livelihood vehicles exempted) and families with regular government employees or pensioners are excluded as per scheme rules.
 * **తెలుగు వివరణ:** అర్హతలు: ఎస్సీ, ఎస్టీ, బీసీ, ఈబీసీ, కాపు, మైనారిటీ మరియు దివ్యాంగ విద్యార్థులు; కుటుంబ వార్షిక ఆదాయం రూ. 2.50 లక్షల లోపు ఉండాలి; కళాశాలలో కనీసం 75% హాజరు తప్పనిసరి. కుటుంబంలో ప్రభుత్వ ఉద్యోగులు ఉండరాదు.
 
-## 5. Application and Portal (దరఖాస్తు విధానం)
-* Applications are submitted online through college verification on the official **JnanaBhumi** portal (`https://jnanabhumi.ap.gov.in`).
-* Biometric authentication of the student and parent/guardian is required for registration and renewal.
-* Students and parents can track application, sanction, and payment status using their Aadhaar number or JnanaBhumi student ID.
+## 5. Application, Documents & Helplines (దరఖాస్తు విధానం, పత్రాలు మరియు సంప్రదింపులు)
+* **Application and College Verification:** Applications are submitted online through college verification on the official **JnanaBhumi** portal. Principals and college scholarship nodal officers certify enrollment and attendance.
+* **Required Documents:**
+  1. Student and Mother/Guardian Aadhaar Cards.
+  2. BPL Rice Card / MeeSeva Income Certificate (validating family income <= Rs. 2.50 Lakh).
+  3. Integrated Community / Caste Certificate (issued by Revenue Department).
+  4. College Admission Allotment Order and Fee Structure Receipt.
+  5. Mother's active Aadhaar-seeded, NPCI-mapped bank account passbook.
+  6. Previous Qualifying Academic Marksheets (SSC / Inter / Degree).
+* **Biometric Authentication & Status Tracking:** Mandatory biometric/facial e-KYC authentication of student and mother for initial sanction and subsequent renewals.
+* **Official Portals and Helplines:**
+  * Official JnanaBhumi Portal: `https://jnanabhumi.ap.gov.in`
+  * Social Welfare Department Toll-Free Helpline / Grievance Helpline (Spandana): **1902**
+* **తెలుగు వివరణ:** దరఖాస్తు విధానం మరియు అవసరమైన పత్రాలు: విద్యార్థులు తాము చేరిన కళాశాల ద్వారా అధికారిక జ్ఞానభూమి పోర్టల్ (jnanabhumi.ap.gov.in) లో ఆన్‌లైన్ దరఖాస్తు సమర్పించాలి. అవసరమైన పత్రాలు: 1. విద్యార్థి మరియు తల్లి/తండ్రి ఆధార్ కార్డులు, 2. రైస్ కార్డు లేదా ఆదాయ ధృవీకరణ పత్రం (రూ. 2.50 లక్షల లోపు), 3. కుల ధృవీకరణ పత్రం (ఎస్సీ, ఎస్టీ, బీసీ, ఈబీసీ, కాపు, మైనారిటీలకు), 4. కళాశాల అడ్మిషన్ అలాట్‌మెంట్ ఆర్డర్ మరియు ఫీజు రసీదు, 5. తల్లి పేరు మీద ఉన్న ఆధార్-ఎన్‌పీసీఐ అనుసంధాన బ్యాంక్ పాస్‌బుక్, 6. మునుపటి తరగతి మార్కుల జాబితా. విద్యార్థి మరియు తల్లి బయోమెట్రిక్ లేదా ఈ-కేవైసీ ప్రమాణీకరణ తప్పనిసరి. దరఖాస్తు స్థితిని జ్ఞానభూమి పోర్టల్‌లో లేదా సచివాలయ వెల్ఫేర్ అసిస్టెంట్ వద్ద తెలుసుకోవచ్చు. ఏవైనా సమస్యలకు జ్ఞానభూమి హెల్ప్‌డెస్క్ లేదా స్పందన 1902 ను సంప్రదించవచ్చు.

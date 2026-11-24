@@ -32,7 +32,12 @@ scheme_category: "Emergency Care and Rural Mobile Clinics"
   * Home visits by the medical team for bedridden patients and elderly citizens unable to travel to clinics.
 * **తెలుగు వివరణ:** గ్రామీణ ప్రాంతాల్లో ప్రతి గ్రామానికి నెలకు నిర్ణీత తేదీల్లో 104 వాహనం వస్తుంది. ఇందులో ఉచిత రక్తపోటు (బీపీ), షుగర్ పరీక్షలు, మధుమేహం మరియు బీపీ మందుల ఉచిత పంపిణీ, గర్భిణీ స్త్రీల పరీక్షలు మరియు మంచానికే పరిమితమైన వృద్ధులకు ఇంటి వద్దనే వైద్య సేవలు అందిస్తారు.
 
-## 3. How to Contact (సంప్రదింపు వివరాలు)
-* Emergency Ambulance dispatch: Dial **108** (toll-free from any mobile or landline, 24x7).
-* Health information, tele-consultation, and MMU visit schedules: Dial **104**.
-* Department Website: `https://cfw.ap.nic.in`.
+## 3. How to Contact, Helplines & Documentation (సంప్రదింపు వివరాలు మరియు పత్రాలు)
+* **Emergency Ambulance Service:** Dial **108** (toll-free from any mobile or landline, 24x7 across Andhra Pradesh).
+  * **Critical Safeguard:** No documents or identity cards are needed to call 108 or receive emergency transport; never delay lifesaving medical response.
+* **Health Information & Tele-Consultation:** Dial **104** (toll-free) for medical advice, blood bank availability, mental health counseling, and MMU village visit schedules.
+* **Documentation for 104 Clinics:** Patient Aadhaar Card or previous clinic doctor prescriptions (to dispense chronic monthly medications).
+* **Department Website & Grievances:**
+  * Official Health Department Portal: `https://cfw.ap.nic.in`
+  * Citizen Grievance Helpline (Spandana): **1902**
+* **తెలుగు వివరణ:** సంప్రదింపు వివరాలు మరియు నిబంధనలు: అత్యవసర ప్రాణాపాయ పరిస్థితుల్లో వెంటనే 108 కు ఉచితంగా కాల్ చేయండి (24 గంటలు అందుబాటులో ఉంటుంది). ముఖ్య గమనిక: 108 అంబులెన్స్ సేవలకు ఎటువంటి గుర్తింపు పత్రాలు లేదా రేషన్ కార్డులు అవసరం లేదు; పత్రాల కోసం వెతకడానికి ఫోన్ చేయడంలో ఆలస్యం చేయరాదు. సాధారణ ఆరోగ్య సమాచారం, టెలి-కన్సల్టేషన్ మరియు 104 మొబైల్ క్లినిక్ షెడ్యూల్ కోసం 104 కు కాల్ చేయవచ్చు. 104 క్లినిక్‌లో దీర్ఘకాలిక మందులు పొందడానికి పాత ప్రిస్క్రిప్షన్ లేదా ఆధార్ కార్డు తీసుకురావాలి. ఇతర సమస్యలు లేదా ఫిర్యాదులకు cfw.ap.nic.in లేదా స్పందన 1902 ను సంప్రదించవచ్చు.

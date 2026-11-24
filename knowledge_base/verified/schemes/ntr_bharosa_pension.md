@@ -36,10 +36,17 @@ The NTR Bharosa Pension Scheme (formerly operating as YSR Pension Kanuka) is the
 * **Income Limit:** Total monthly family income must be within notified BPL parameters (benchmarked below Rs. 10,000 in rural areas and below Rs. 12,000 in urban areas).
 * **Land Ceiling:** Maximum agricultural landholding within notified limits (3 acres of wet land or 10 acres of dry land, or 10 acres combined).
 * **Asset & Vehicle Restrictions:** Family must not own a four-wheeler (commercial livelihood vehicles exempted). No family member should be a regular government employee or receiving another government pension.
-* **తెలుగు వివరణ:** అర్హతలు: ఏపీ నివాసి అయి ఉండాలి, రైస్ కార్డు ఉండాలి, కుటుంబ నెలవారీ ఆదాయం గ్రామీణ ప్రాంతాల్లో రూ. 10,000, పట్టణాల్లో రూ. 12,000 లోపు ఉండాలి. కుటుంబంలో ప్రభుత్వ ఉద్యోగులు ఉండరాదు.
+* **తెలుగు వివరణ:** అర్హత నిబంధనలు: ఆంధ్రప్రదేశ్ శాశ్వత నివాసి అయి ఉండాలి; చెల్లుబాటు అయ్యే తెల్ల రేషన్ కార్డు / రైస్ కార్డు కలిగి ఉండాలి. కుటుంబ నెలవారీ ఆదాయం గ్రామీణ ప్రాంతాల్లో రూ. 10,000, పట్టణాల్లో రూ. 12,000 లోపు ఉండాలి. వ్యవసాయ భూమి 3 ఎకరాల మాగాణి లేదా 10 ఎకరాల మెట్ట లోపు ఉండాలి. కుటుంబంలో నాలుగు చక్రాల వాహనం (ఆటో వంటి జీవనోపాధి వాహనాలు మినహా) ఉండరాదు మరియు ప్రభుత్వ ఉద్యోగులు లేదా ఇతర ప్రభుత్వ పెన్షన్ పొందుతున్న వారు ఉండరాదు.
 
-## 4. Application and Distribution Modalities (దరఖాస్తు మరియు పంపిణీ విధానం)
-* Beneficiaries submit physical applications at their local **Grama / Ward Sachivalayam (గ్రామ/వార్డు సచివాలయం)**.
-* Verification is conducted by the Welfare and Education Assistant (WEA) and Panchayat Secretary, followed by mandatory Social Audit approval in Grama Sabha.
-* Monthly cash disbursement is typically carried out at the village/ward level using biometric/facial authentication.
-* Beneficiaries can check application status, disbursement logs, and pension ID online at `https://sspensions.ap.gov.in`.
+## 4. Application, Documents & Distribution Modalities (దరఖాస్తు, పత్రాలు మరియు పంపిణీ విధానం)
+* **Application & Verification:** Beneficiaries submit applications at their local **Grama / Ward Sachivalayam (గ్రామ/వార్డు సచివాలయం)**. Verification is conducted by the Welfare and Education Assistant (WEA) and Panchayat Secretary, followed by mandatory Social Audit approval in Grama Sabha.
+* **Required Documents:**
+  1. Aadhaar Card of the applicant and family members.
+  2. Valid BPL Rice Card / White Ration Card.
+  3. Age Proof Document (Voter ID, School certificate, or Aadhaar) establishing 60+ years for OAP.
+  4. Specialized Certificates: Official SADAREM medical disability certificate for disabled categories; Spouse Death Certificate for Widow Pension; Medical Board records for chronic illnesses.
+  5. Active Bank Passbook / DBT biometric consent form.
+* **Monthly Disbursement & Online Portals:** Doorstep monthly cash disbursement on the 1st of every month via biometric/facial authentication.
+  * Official Pension Portal: `https://sspensions.ap.gov.in`
+  * Citizen Grievance Helpline (Spandana): **1902**
+* **తెలుగు వివరణ:** దరఖాస్తు మరియు పంపిణీ విధానం: దరఖాస్తుదారులు స్థానిక గ్రామ/వార్డు సచివాలయంలో సంక్షేమ మరియు విద్యా సహాయకుడిని (WEA) సంప్రదించి దరఖాస్తు చేసుకోవాలి. పంచాయతీ కార్యదర్శి క్షేత్రస్థాయి విచారణ తర్వాత గ్రామసభ సోషల్ ఆడిట్ ఆమోదం పొందుతారు. అవసరమైన పత్రాలు: 1. ఆధార్ కార్డు, 2. రైస్ కార్డు, 3. వయస్సు ధృవీకరణ పత్రం (వృద్ధాప్య పింఛనుకు 60 ఏళ్లు నిండిన రుజువు), 4. కేటగిరీ ధృవీకరణ పత్రాలు (దివ్యాంగులకు సదరం - SADAREM సర్టిఫికెట్, వితంతువులకు భర్త మరణ ధృవీకరణ పత్రం, తీవ్ర అనారోగ్య బాధితులకు మెడికల్ బోర్డు రికార్డులు), 5. బ్యాంక్ పాస్‌బుక్ వివరాలు. ప్రతి నెలా 1వ తేదీన బయోమెట్రిక్ లేదా ముఖ గుర్తింపు (Facial Auth) ద్వారా ఇంటి వద్దనే నగదు పంపిణీ జరుగుతుంది. దరఖాస్తు స్థితిని sspensions.ap.gov.in పోర్టల్‌లో లేదా స్పందన 1902 ద్వారా తెలుసుకోవచ్చు.

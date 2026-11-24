@@ -35,9 +35,16 @@ Dr. NTR Vaidya Seva (formerly functioning as Dr. YSR Aarogyasri) is the flagship
 * **Exclusions:** Regular government employees and pensioners covered under the Employees Health Scheme (EHS) are excluded.
 * **తెలుగు వివరణ:** అర్హతలు: ఆంధ్రప్రదేశ్ నివాసి అయి ఉండాలి; తెల్ల రేషన్ కార్డు / రైస్ కార్డు లేదా ఆరోగ్యశ్రీ హెల్త్ కార్డు ఉండాలి. కార్డు లేని వారికి వార్షిక కుటుంబ ఆదాయం నిర్ణీత పరిమితికి (రూ. 5 లక్షల లోపు) లోబడి ఉండాలి. ప్రభుత్వ ఉద్యోగుల ఆరోగ్య పథకం (EHS) కింద రక్షణ పొందుతున్న వారు మినహాయింపు.
 
-## 4. How to Access Services (సేవలు పొందే విధానం)
-* Beneficiaries visit the **Aarogyamithra Help Desk** at any empaneled government or private network hospital with their Rice Card or Aadhaar Card.
-* The Aarogyamithra verifies patient identity, coordinates diagnostic evaluation, and submits pre-authorization requests to the Trust.
-* **In Emergencies:** In acute life-threatening situations, dial **108** immediately; citizens should not delay emergency hospital visits to search for physical cards.
-* Official Trust Portal: `https://drntrvaidyaseva.ap.gov.in`.
-* 24x7 Toll-Free Healthcare Helpline: **104**.
+## 4. How to Access Services, Documents & Helplines (సేవలు పొందే విధానం, పత్రాలు మరియు హెల్ప్‌లైన్లు)
+* **Hospital Help Desk & Pre-Authorization:** Beneficiaries visit the **Aarogyamithra Help Desk** at any empaneled government or private network hospital with their Rice Card or Aadhaar Card. Aarogyamithras assist with patient e-KYC, doctor consultations, diagnostic tests, and initiate digital pre-authorization with the Trust.
+* **Required Documents:**
+  1. Patient Aadhaar Card.
+  2. BPL White Ration Card / Rice Card or Dr. NTR Vaidya Seva / Aarogyasri Health Card.
+  3. Doctor prescription / diagnostic referral slip (for planned admissions).
+* **Emergency Medical Rule (అత్యవసర నిబంధన):** In life-threatening emergencies, dial **108** immediately or proceed to the casualty department of the nearest network hospital; treatment must NOT be delayed to search for physical cards or documents.
+* **Post-Discharge Benefits:** Free follow-up medicines provided for prescribed recovery periods along with post-operative sustenance allowance (Aarogya Asara) where notified.
+* **Official Portals and Helplines:**
+  * Official Trust Portal: `https://drntrvaidyaseva.ap.gov.in`
+  * 24x7 State Healthcare Toll-Free Helpline: **104** / Emergency Ambulance: **108**
+  * Grievance Redressal (Spandana): **1902**
+* **తెలుగు వివరణ:** సేవలు పొందే విధానం: నెట్‌వర్క్ ఆసుపత్రిలోని ఆరోగ్యమిత్ర హెల్ప్ డెస్క్‌ను సంప్రదించి రోగి ఆధార్ కార్డు మరియు రైస్ కార్డు సమర్పించాలి. ఆరోగ్యమిత్ర రోగి వివరాలను నమోదు చేసి, వైద్య పరీక్షల సమన్వయం మరియు ట్రస్ట్ నుండి ముందస్తు అనుమతి (Pre-authorization) ప్రక్రియను పూర్తి చేస్తారు. అవసరమైన పత్రాలు: 1. రోగి ఆధార్ కార్డు, 2. రైస్ కార్డు లేదా ఆరోగ్యశ్రీ హెల్త్ కార్డు, 3. డాక్టర్ రిఫరల్ పత్రాలు. ముఖ్య అత్యవసర గమనిక: ప్రాణాపాయ అత్యవసర పరిస్థితుల్లో వెంటనే 108 కు కాల్ చేయాలి లేదా సమీప నెట్‌వర్క్ ఆసుపత్రికి వెళ్ళాలి; కార్డుల కోసం వెతకడానికి అత్యవసర చికిత్సను ఎట్టిపరిస్థితుల్లో ఆలస్యం చేయరాదు. డిశ్చార్జ్ తర్వాత ఉచిత మందులు మరియు వర్తించే శస్త్రచికిత్సలకు ఆరోగ్య ఆసరా జీవన భృతి లభిస్తుంది. అధికారిక పోర్టల్ drntrvaidyaseva.ap.gov.in మరియు 24 గంటల ఉచిత ఆరోగ్య హెల్ప్‌లైన్ 104 లేదా స్పందన 1902 ను సంప్రదించవచ్చు.

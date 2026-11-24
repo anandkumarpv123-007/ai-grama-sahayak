@@ -31,9 +31,10 @@ Ayushman Bharat – Pradhan Mantri Jan Arogya Yojana (AB PM-JAY) is the National
 * **Documents for Admission:** Co-branded Ayushman Bharat Card, Rice Card, or Aadhaar Card of the patient.
 * **Verification Process:** Handled via biometric authentication at the hospital Ayushman Mitra / Aarogyamithra help desk.
 * **Emergency Care Note:** In urgent medical emergencies, lifesaving care should not be delayed; hospital help desks assist with enrollment and authorization on an emergency basis.
-* **తెలుగు వివరణ:** అర్హత గల కుటుంబాలు ఆయుష్మాన్ కార్డు, రైస్ కార్డు లేదా ఆధార్ కార్డు ద్వారా నెట్‌వర్క్ ఆసుపత్రులలో చేరవచ్చు. అత్యవసర పరిస్థితుల్లో చికిత్సను ఆలస్యం చేయకుండా ఆసుపత్రి సిబ్బంది సమాంతరంగా ధృవీకరణ పూర్తి చేస్తారు.
+* **తెలుగు వివరణ:** లబ్ధిదారుల అర్హతలు మరియు అవసరమైన పత్రాలు: ఎస్ఈసీసీ (SECC) సామాజిక-ఆర్థిక సర్వే జాబితాలో ఉన్న కుటుంబాలు మరియు దారిద్ర్య రేఖకు దిగువన ఉన్న తెల్ల రేషన్/రైస్ కార్డు కలిగిన కుటుంబాలు అర్హులు. అవసరమైన పత్రాలు: 1. రోగి ఆధార్ కార్డు, 2. బియ్యం కార్డు / రైస్ కార్డు, 3. కో-బ్రాండెడ్ ఆయుష్మాన్ భారత్ హెల్త్ కార్డు (BIS పోర్టల్ లేదా ఆయుష్మాన్ యాప్ ద్వారా డిజిటల్‌గా పొందినది). ఆసుపత్రిలోని ఆయుష్మాన్ మిత్ర వద్ద బయోమెట్రిక్ ఈ-కేవైసీ ద్వారా ధృవీకరణ జరుగుతుంది. అత్యవసర ప్రాణాపాయ పరిస్థితుల్లో చికిత్సను ఆపకుండా ఆసుపత్రి సిబ్బంది అత్యవసర అనుమతి ప్రక్రియను చేపడతారు.
 
-## 4. Contact & Portal Inquiries (సంప్రదింపు వివరాలు)
+## 4. Contact & Portal Inquiries (సంప్రదింపు వివరాలు మరియు ఫిర్యాదులు)
 * National PM-JAY Portal: `https://nha.gov.in` and `https://pmjay.gov.in`.
 * State Trust Portal: `https://drntrvaidyaseva.ap.gov.in`.
-* National Toll-Free Helpline: **14555** / State Healthcare Helpline: **104**.
+* National Toll-Free Helpline: **14555** / State Healthcare Helpline: **104** / Grievance Helpline (Spandana): **1902**.
+* **తెలుగు వివరణ:** సంప్రదింపు మరియు ఫిర్యాదుల పరిష్కారం: జాతీయ పోర్టల్ nha.gov.in లేదా pmjay.gov.in, మరియు రాష్ట్ర పోర్టల్ drntrvaidyaseva.ap.gov.in ద్వారా దేశవ్యాప్త ఎంపానెల్ ఆసుపత్రుల జాబితాను పరిశీలించవచ్చు. జాతీయ టోల్-ఫ్రీ హెల్ప్‌లైన్ 14555, రాష్ట్ర హెల్ప్‌లైన్ 104 లేదా స్పందన 1902 ద్వారా సమాచారం మరియు ఫిర్యాదుల పరిష్కారం పొందవచ్చు.

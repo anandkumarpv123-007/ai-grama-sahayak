@@ -27,7 +27,10 @@ Samagra Shiksha Andhra Pradesh is an overarching sector-wide program for school 
   * Food safety and quality monitored by School Management Committees (SMCs), teachers, and village health functionaries.
 * **తెలుగు వివరణ:** ప్రభుత్వ మరియు ఎయిడెడ్ పాఠశాలల్లో 1 నుండి 10వ తరగతి చదివే విద్యార్థులందరికీ ఉచితంగా ద్విభాషా (తెలుగు-ఇంగ్లీష్) పాఠ్యపుస్తకాలు, నోట్‌బుక్స్, మూడు జతల యూనిఫాంలు, స్కూల్ బ్యాగ్, బూట్లు పంపిణీ చేస్తారు. మధ్యాహ్నం వేడివేడి పౌష్టికాహారంతో పాటు నిర్ణీత మెనూ ప్రకారం కోడిగుడ్లు, చిక్కీ మరియు పోషక విలువలతో కూడిన ఆహారం అందిస్తారు.
 
-## 3. Beneficiary Scope & Contact (పరిధి మరియు సంప్రదింపులు)
-* All children enrolled in Government, Mandal Parishad (MPPS), Zilla Parishad (ZPHS), Municipal, Tribal, and Social Welfare residential schools across Andhra Pradesh.
-* Official Website: `https://samagrashiksha.ap.gov.in`.
-* Department Helpline: **1800-425-6776**.
+## 3. Beneficiary Scope, Delivery & Contact (లబ్ధిదారుల పరిధి, పంపిణీ మరియు సంప్రదింపులు)
+* **School Coverage:** All children enrolled in Government, Mandal Parishad (MPPS), Zilla Parishad (ZPHS), Municipal, Tribal, and Social Welfare residential schools (Classes 1 to 10) across Andhra Pradesh.
+* **Delivery Mechanism & Documents:** Entitlements (bilingual textbooks, uniforms, school kits, and daily mid-day meals) are provided automatically directly at school premises upon enrollment; no separate application or fee is required. Students need school admission registration and Aadhaar record in Child Info.
+* **Official Portals and Helplines:**
+  * Official Samagra Shiksha Portal: `https://samagrashiksha.ap.gov.in`
+  * School Education Toll-Free Helpline: **1800-425-6776** / Grievance Helpline (Spandana): **1902**
+* **తెలుగు వివరణ:** లబ్ధిదారుల పరిధి మరియు సంప్రదింపులు: ఆంధ్రప్రదేశ్‌లోని అన్ని ప్రభుత్వ, మండల పరిషత్ (MPPS), జిల్లా పరిషత్ (ZPHS), మున్సిపల్ మరియు సంక్షేమ వసతి పాఠశాలల్లో 1 నుండి 10వ తరగతి చదివే విద్యార్థులందరికీ ఈ ఉచిత ప్రయోజనాలు వర్తిస్తాయి. పాఠశాలలో అడ్మిషన్ పొందిన వెంటనే ఉచిత ద్విభాషా పుస్తకాలు, యూనిఫారాలు, స్కూల్ కిట్లు మరియు ప్రతిరోజూ పౌష్టికాహార మధ్యాహ్న భోజనం నేరుగా బడిలోనే అందించబడతాయి; దీనికి ఎటువంటి ప్రత్యేక దరఖాస్తు లేదా రుసుము చెల్లించాల్సిన అవసరం లేదు. నాణ్యత లేదా సేవలపై ఏవైనా సమస్యలు ఉంటే ప్రధానోపాధ్యాయులను లేదా విద్యాశాఖ ఉచిత హెల్ప్‌లైన్ 1800-425-6776 లేదా స్పందన 1902 ను సంప్రదించవచ్చు.

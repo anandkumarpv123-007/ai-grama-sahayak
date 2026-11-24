@@ -38,9 +38,17 @@ Each secretariat houses specialized functional assistants:
 7. Mahila Police (Women safety, citizen guidance).
 8. Engineering Assistant (Rural water supply, infrastructure works).
 9. Digital Assistant (Computer processing, citizen tokens, fee collections).
+* **తెలుగు వివరణ:** సచివాలయ సిబ్బంది మరియు వారి బాధ్యతలు: 1. పంచాయతీ కార్యదర్శి / వార్డు పరిపాలనా కార్యదర్శి (సాధారణ పరిపాలన), 2. గ్రామ రెవెన్యూ అధికారి - వీఆర్వో (భూమి, రెవెన్యూ వ్యవహారాలు), 3. గ్రామ వ్యవసాయ / ఉద్యాన సహాయకుడు (సాగు, ఈ-క్రాప్, భూసార పరీక్షలు), 4. పశుసంవర్ధక సహాయకుడు (పశువైద్యం), 5. సంక్షేమ మరియు విద్యా సహాయకుడు - డబ్ల్యూఈఏ (స్కాలర్‌షిప్‌లు, పింఛన్లు, గృహ నిర్మాణం, సంక్షేమ పథకాలు), 6. ఏఎన్ఎం / ఆరోగ్య కార్యదర్శి (ఆరోగ్య సేవలు, టీకాలు), 7. మహిళా పోలీస్ (మహిళా రక్షణ, పౌర మార్గదర్శకత్వం), 8. ఇంజనీరింగ్ అసిస్టెంట్ (తాగునీరు, మౌలిక వసతులు), 9. డిజిటల్ అసిస్టెంట్ (కంప్యూటర్ సేవలు, ఆన్‌లైన్ దరఖాస్తులు, రసీదులు).
 
-## 4. How to Avail Services & Track Status (సేవలు పొందే విధానం మరియు స్టేటస్)
-* Citizens visit their designated Grama/Ward Sachivalayam or submit requests online via the official portal: `https://gramawardsachivalayam.ap.gov.in`.
+## 4. How to Avail Services, Documents & Track Status (సేవలు పొందే విధానం, పత్రాలు మరియు ట్రాకింగ్)
+* Citizens visit their designated Grama/Ward Sachivalayam or submit requests online via the official portal.
+* Official Portal: `https://gramawardsachivalayam.ap.gov.in`
+* **Required Documents:**
+  1. Aadhaar Card of the applicant.
+  2. Rice Card / White Ration Card.
+  3. Active Mobile Number for SMS OTP authentication and tracking.
+  4. Relevant service documents (e.g., revenue title deeds, hospital discharge certificates for birth/death, electricity bills).
 * A digital acknowledgment slip containing a unique Service Request Number (SRN) is generated immediately upon application submission.
-* Citizens receive SMS tracking alerts at key stages of file movement until final certificate issuance.
+* Citizens receive SMS tracking alerts at key stages of file movement until final certificate issuance within mandated Citizens' Charter SLAs.
 * Public Grievance Helpline (Spandana / MeeSeva): Dial **1902**.
+* **తెలుగు వివరణ:** సేవలు పొందే విధానం, పత్రాలు మరియు ట్రాకింగ్: పౌరులు తమ గ్రామ లేదా వార్డు సచివాలయాన్ని సంప్రదించి లేదా gramawardsachivalayam.ap.gov.in పోర్టల్ ద్వారా దరఖాస్తు సమర్పించవచ్చు. అవసరమైన సాధారణ పత్రాలు: 1. ఆధార్ కార్డు, 2. రైస్ కార్డు / రేషన్ కార్డు, 3. క్రియాశీల మొబైల్ నంబర్, మరియు సేవకు సంబంధించిన నిర్దిష్ట పత్రాలు (భూమి రికార్డులు లేదా జనన/మరణ ఆసుపత్రి నివేదికలు). దరఖాస్తు సమర్పించిన వెంటనే యూనిక్ సర్వీస్ రిక్వెస్ట్ నంబర్ (SRN) కలిగిన డిజిటల్ రసీదు లభిస్తుంది. సర్వీస్ లెవల్ అగ్రిమెంట్ (SLA) కాలపరిమితి ప్రకారం నిర్ణీత రోజుల్లో సేవలు పరిష్కరించబడతాయి. ఎస్ఎంఎస్ (SMS) ద్వారా పురోగతి తెలుస్తుంది. ఏవైనా సమస్యలు లేదా గడువు దాటిన సేవలపై ఫిర్యాదు చేయడానికి ప్రజా సమస్యల పరిష్కార వేదిక స్పందన / మీసేవ ఉచిత హెల్ప్‌లైన్ 1902 కు కాల్ చేయవచ్చు.

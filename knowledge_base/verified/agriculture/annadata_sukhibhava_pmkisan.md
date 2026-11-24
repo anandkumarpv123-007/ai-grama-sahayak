@@ -36,13 +36,14 @@ Annadata Sukhibhava – PM Kisan is a farmer welfare and income support framewor
 
 ## 4. Ineligibility & Exclusions (అనర్హతలు)
 Institutional landholders; serving or retired government officers and regular employees; income tax payees; constitutional post holders; and pensioners drawing monthly pension of Rs. 10,000 or more (excluding multi-tasking staff / Class IV).
-సంస్థాగత భూ యజమానులు, ప్రభుత్వ ఉద్యోగులు, రిటైర్డ్ అధికారులు, ఆదాయపు పన్ను చెల్లించేవారు, రాజ్యాంగ పదవులు నిర్వహించిన వారు మరియు నెలకు రూ. 10,000 పైబడి పెన్షన్ తీసుకునేవారు ఈ పథకానికి అనర్హులు.
+* **తెలుగు వివరణ:** అనర్హతలు: సంస్థాగత భూ యజమానులు, ప్రభుత్వ ఉద్యోగులు, రిటైర్డ్ అధికారులు, ఆదాయపు పన్ను చెల్లించేవారు, రాజ్యాంగ పదవులు నిర్వహించిన వారు మరియు నెలకు రూ. 10,000 పైబడి పెన్షన్ తీసుకునేవారు ఈ పథకానికి అనర్హులు.
 
 ## 5. Required Documents (అవసరమైన పత్రాలు)
-1. Aadhaar Card of the applicant and family head (రైతు ఆధార్ కార్డు).
-2. Land Pattadar Passbook / 1B Revenue Record / CCRC Agreement for tenant farmers (పట్టాదారు పాస్‌బుక్ / 1-బి రికార్డు / కౌలు రైతులకు సీసీఆర్‌సీ కార్డు).
-3. Active Bank Account Passbook seeded with Aadhaar and mapped with NPCI (ఆధార్ మరియు ఎన్‌పీసీఐ అనుసంధానమైన బ్యాంక్ ఖాతా).
-4. Active Mobile Number linked to Aadhaar (ఆధార్‌తో లింక్ అయిన మొబైల్ నంబర్).
+1. Aadhaar Card of the applicant and family head.
+2. Land Pattadar Passbook / 1B Revenue Record / CCRC Agreement for tenant farmers.
+3. Active Bank Account Passbook seeded with Aadhaar and mapped with NPCI.
+4. Active Mobile Number linked to Aadhaar.
+* **తెలుగు వివరణ:** అవసరమైన పత్రాలు: 1. రైతు మరియు కుటుంబ పెద్ద ఆధార్ కార్డు, 2. భూమి పట్టాదారు పాస్‌బుక్ లేదా 1-బి రెవెన్యూ రికార్డు (కౌలు రైతులకు ప్రస్తుత పంట సీజన్‌కు సంబంధిత సీసీఆర్‌సీ - CCRC సాగు ఒప్పంద కార్డు), 3. ఆధార్ మరియు ఎన్‌పీసీఐ (NPCI) అనుసంధానమైన బ్యాంక్ ఖాతా పాస్‌బుక్, 4. ఆధార్‌తో లింక్ అయిన మొబైల్ నంబర్.
 
 ## 6. Application, Verification & Grievance Redressal (దరఖాస్తు మరియు సమస్యల పరిష్కారం)
 * Ground verification and enrollment are carried out through Village Agriculture Assistants (VAAs) at **Rythu Seva Kendras (RSK) / Rythu Bharosa Kendras (RBK)** and **Grama / Ward Sachivalayams (గ్రామ/వార్డు సచివాలయాలు)**.
@@ -50,3 +51,4 @@ Institutional landholders; serving or retired government officers and regular em
   * State Portal: `https://annadathasukhibhava.ap.gov.in`
   * Central PM-Kisan Portal: `https://pmkisan.gov.in`
 * For grievances, farmers can approach their local Village Agriculture Assistant at the RSK/RBK or contact the state farmer helpline at **155251** / **1902**.
+* **తెలుగు వివరణ:** దరఖాస్తు మరియు నమోదు ప్రక్రియ గ్రామ/వార్డు సచివాలయాలు మరియు రైతు సేవా కేంద్రాలలో (RSK/RBK) గ్రామ వ్యవసాయ సహాయకుల (VAA) ద్వారా క్షేత్రస్థాయి విచారణ మరియు ఈ-క్రాప్ (e-Crop) నమోదుతో జరుగుతుంది. రైతులు తమ దరఖాస్తు స్థితి, లబ్ధిదారుల జాబితా మరియు చెల్లింపు వివరాలను అధికారిక పోర్టల్ (annadathasukhibhava.ap.gov.in) లేదా పీఎం కిసాన్ పోర్టల్ (pmkisan.gov.in) ద్వారా తెలుసుకోవచ్చు. ఏవైనా సమస్యలు లేదా ఫిర్యాదులు ఉంటే ఆర్ఎస్కే/ఆర్బీకేలోని గ్రామ వ్యవసాయ సహాయకుడిని సంప్రదించవచ్చు లేదా రాష్ట్ర ఉచిత రైతు హెల్ప్‌లైన్ 155251 లేదా స్పందన 1902 కు కాల్ చేయవచ్చు.

@@ -31,9 +31,18 @@ The Pedalandariki Illu (Housing for All Poor) scheme, implemented by the Andhra 
 * Must hold a valid White Ration Card / Rice Card.
 * Annual household income must be within notified BPL / EWS economic ceilings.
 * Exclusions: Families where an adult member is a regular government employee or owns a four-wheeler (excluding commercial livelihood vehicles like autos/taxis).
-* అర్హతలు: ఏపీ నివాసి అయి ఉండాలి, భారతదేశంలో ఎక్కడా సొంత పక్కా ఇల్లు ఉండరాదు, రైస్ కార్డు కలిగి ఉండాలి, నిర్దేశిత ఆదాయ పరిమితి లోపు ఉండాలి. కుటుంబంలో ప్రభుత్వ ఉద్యోగులు ఉండరాదు.
+* **తెలుగు వివరణ:** అర్హతలు మరియు నిబంధనలు: ఆంధ్రప్రదేశ్ శాశ్వత నివాసి అయి ఉండాలి; భారతదేశంలో ఎక్కడా సొంత పక్కా ఇల్లు లేదా ఇంటి స్థలం ఉండరాదు; తెల్ల రేషన్ కార్డు / రైస్ కార్డు కలిగి ఉండాలి; కుటుంబ వార్షిక ఆదాయం నిర్ణీత బీపీఎల్/ఈడబ్ల్యూఎస్ పరిమితి లోపు ఉండాలి. కుటుంబంలో ప్రభుత్వ ఉద్యోగులు ఉండరాదు మరియు నాలుగు చక్రాల వాహనం (ఆటో వంటి జీవనోపాధి వాహనాలు మినహా) ఉండరాదు.
 
-## 4. Application & Status Check (దరఖాస్తు మరియు తనిఖీ)
-* Applications and beneficiary verifications for Pedalandariki Illu are handled at the local **Grama / Ward Sachivalayam (గ్రామ/వార్డు సచివాలయం)** through the Engineering Assistant and Welfare & Education Assistant.
-* Physical geo-tagging of allotted plots and stage-wise construction photographs are uploaded via the official APSHCL mobile portal.
-* Beneficiaries can check sanction lists, stage payments, and bill status on `https://housing.ap.gov.in`.
+## 4. Application, Documents & Status Verification (దరఖాస్తు, పత్రాలు మరియు పరిశీలన విధానం)
+* **Where to Apply & Verification:** Handled at the local **Grama / Ward Sachivalayam (గ్రామ/వార్డు సచివాలయం)** through the Engineering Assistant (EA) and Welfare & Education Assistant (WEA).
+* **Required Documents:**
+  1. Aadhaar Card of applicant (female head of household) and spouse.
+  2. Valid BPL Rice Card / White Ration Card.
+  3. House Site Allotment Patta copy.
+  4. Active Aadhaar-seeded, NPCI-linked bank account passbook.
+  5. Non-possession of pucca house self-declaration affidavit and family photographs.
+* **Geo-Tagging & Stage Disbursements:** Subsidies are disbursed across 4 construction stages (Basement level, Lintel level, Roof cast, Completion) only after mandatory physical geo-tagging photographs are uploaded via the APSHCL mobile portal.
+* **Official Portals and Helplines:**
+  * Official Housing Portal: `https://housing.ap.gov.in`
+  * Housing Corporation Helpline / Grievance Helpline (Spandana): **1902**
+* **తెలుగు వివరణ:** దరఖాస్తు మరియు పరిశీలన విధానం: గ్రామ/వార్డు సచివాలయంలోని ఇంజనీరింగ్ అసిస్టెంట్ మరియు వెల్ఫేర్ అసిస్టెంట్ వద్ద దరఖాస్తు చేసుకోవాలి. అవసరమైన పత్రాలు: 1. దరఖాస్తుదారు (మహిళా యజమాని) మరియు భర్త ఆధార్ కార్డులు, 2. రైస్ కార్డు, 3. ఇంటి స్థలం పట్టా పత్రం, 4. ఆధార్-ఎన్‌పీసీఐ అనుసంధాన బ్యాంక్ పాస్‌బుక్, 5. దేశంలో ఎక్కడా పక్కా ఇల్లు లేదని సెల్ఫ్ డిక్లరేషన్ మరియు కుటుంబ ఫోటోలు. నిధుల విడుదల భౌతిక నిర్మాణ మైలురాళ్ల ఆధారంగా (బేస్‌మెంట్, లింటెల్ లెవల్, స్లాబ్, మరియు పూర్తి కావడం) ఇంజనీరింగ్ అసిస్టెంట్ తీసే మొబైల్ జియో-ట్యాగింగ్ ఫోటోల ధృవీకరణ తర్వాత మాత్రమే నేరుగా లబ్ధిదారుల బ్యాంక్ ఖాతాలకు జమ అవుతుంది. మంజూరు జాబితాలు మరియు బిల్లుల స్థితిని housing.ap.gov.in లో లేదా స్పందన 1902 ద్వారా తెలుసుకోవచ్చు.

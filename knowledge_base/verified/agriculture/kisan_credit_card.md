@@ -31,6 +31,14 @@ The Kisan Credit Card (KCC) scheme provides timely, adequate, and affordable ins
 * భూమి ఉన్న రైతులు, ఉమ్మడి సాగుదారులు, ఒప్పంద పత్రాలు కలిగిన కౌలు రైతులు, స్వయం సహాయక బృందాలు (SHGs/JLGs), అలాగే పాడి పశువులు మరియు మత్స్య సాగు చేపట్టే రైతులు కూడా నిబంధనల ప్రకారం అర్హులు.
 
 ## 4. How to Apply & Required Documents (దరఖాస్తు విధానం మరియు పత్రాలు)
-* Farmers can apply at any Commercial Bank branch, Regional Rural Bank (such as APGVB or CGGB), District Cooperative Central Bank (DCCB) / Primary Agricultural Credit Society (PACS), or submit inquiries via the PM-Kisan / JanSamarth portal.
-* Required documents: Filled application form, Identity Proof (Aadhaar Card, Voter ID, PAN Card), Address Proof, Land Record (Pattadar Passbook / 1B revenue record / tenancy agreement), and recent passport-size photographs.
-* దరఖాస్తు చేసుకోవడానికి ఆధార్ కార్డు, పట్టాదారు పాస్‌బుక్ / రెవెన్యూ రికార్డులు, పాస్‌పోర్ట్ సైజు ఫోటోలతో సమీపంలోని జాతీయ బ్యాంకు, గ్రామీణ బ్యాంకు లేదా డీసీసీబీ (DCCB) సహకార బ్యాంకును సంప్రదించాలి.
+* **Where to Apply:** Farmers can apply at any Commercial Bank branch, Regional Rural Bank (such as APGVB or CGGB), District Cooperative Central Bank (DCCB) / Primary Agricultural Credit Society (PACS), or submit inquiries via the JanSamarth / PM-Kisan portals.
+* **Required Documents:**
+  1. Filled and signed KCC loan application form.
+  2. Identity and Address Proof (Aadhaar Card, Voter ID, PAN Card).
+  3. Land Ownership / Cultivation Proof: Pattadar Passbook, 1B revenue extract, or registered CCRC agreement for tenant farmers / JLGs.
+  4. Active Bank Account Passbook and recent passport-size photographs.
+* **Official Portals and Helplines:**
+  * National Agriculture Credit Portal: `https://agricoop.gov.in`
+  * National Credit Portal: `https://www.jansamarth.in`
+  * Kisan Call Centre Toll-Free Helpline: **1800-180-1551** / Spandana: **1902**
+* **తెలుగు వివరణ:** దరఖాస్తు విధానం మరియు అవసరమైన పత్రాలు: రైతులు సమీపంలోని ఏదైనా వాణిజ్య బ్యాంకు (Commercial Bank), ప్రాంతీయ గ్రామీణ బ్యాంకు (APGVB / CGGB) లేదా డీసీసీబీ (DCCB) / ప్రాథమిక వ్యవసాయ సహకార సంఘం (PACS) శాఖను సంప్రదించి దరఖాస్తు చేసుకోవచ్చు. అవసరమైన పత్రాలు: 1. నింపిన దరఖాస్తు ఫారం, 2. ఆధార్ కార్డు లేదా ఓటర్ ఐడీ, 3. భూమి పట్టాదారు పాస్‌బుక్ లేదా 1-బి రెవెన్యూ రికార్డు (కౌలు రైతులకు సాగు ఒప్పంద పత్రం లేదా సీసీఆర్‌సీ కార్డు), 4. ఆధార్ అనుసంధాన బ్యాంక్ పాస్‌బుక్, 5. పాస్‌పోర్ట్ సైజు ఫోటోలు. ఆన్‌లైన్ దరఖాస్తులకు jansamarth.in లేదా agricoop.gov.in పోర్టల్‌ను ఉపయోగించవచ్చు. సందేహాల నివృత్తికి కిసాన్ కాల్ సెంటర్ ఉచిత నంబర్ 1800-180-1551 లేదా స్పందన 1902 కు కాల్ చేయవచ్చు.
