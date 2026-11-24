@@ -24,6 +24,8 @@ import base64
 import wave
 import io
 import json
+import time
+import asyncio
 from unittest.mock import patch, MagicMock
 
 backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -44,20 +46,18 @@ from app.services.voice.transcription import (
 
 
 def run_sync(coro):
-    """Drives coroutines synchronously without socket-bound event loops."""
-    stack = [coro]
-    res = None
-    while stack:
-        curr = stack[-1]
-        try:
-            val = curr.send(res)
-            res = None
-            if hasattr(val, "send"):
-                stack.append(val)
-        except StopIteration as e:
-            stack.pop()
-            res = e.value
-    return res
+    """Drives coroutines synchronously using asyncio event loop."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
 
 
 def create_dummy_wav_bytes(
@@ -801,6 +801,163 @@ class TestSarvamModelCompatibility(unittest.TestCase):
                 res = run_sync(service.speak("Multi-batch text", "te"))
                 self.assertIn("audio_base64", res)
                 self.assertEqual(call_count, 2)
+
+    def test_combine_wav_rejects_truncated_pcm_data(self):
+        """Strict validation rejects truncated PCM data even when the RIFF header is valid."""
+        raw_valid = create_dummy_wav_bytes(duration_sec=0.1, framerate=8000)
+        self.assertGreater(len(raw_valid), 44)
+        valid_b64 = base64.b64encode(raw_valid).decode("utf-8")
+
+        # 1. Complete valid WAV works
+        combined = combine_wav_base64_chunks([valid_b64])
+        self.assertTrue(bool(combined))
+
+        # 2. Truncate 200 bytes of PCM from the end (valid RIFF header declaring 800 frames, but fewer bytes)
+        raw_trunc = raw_valid[:-200]
+        trunc_b64 = base64.b64encode(raw_trunc).decode("utf-8")
+        with self.assertRaises(ValueError) as ctx:
+            combine_wav_base64_chunks([trunc_b64])
+        self.assertIn("PCM data length mismatch", str(ctx.exception))
+
+        # 3. Truncated second chunk in a multi-chunk response
+        with self.assertRaises(ValueError) as ctx:
+            combine_wav_base64_chunks([valid_b64, trunc_b64])
+        self.assertIn("PCM data length mismatch", str(ctx.exception))
+
+        # 4. Declared frame count exceeding actual PCM bytes
+        with self.assertRaises(ValueError):
+            combine_wav_base64_chunks([trunc_b64, valid_b64])
+
+    def test_speak_rejects_truncated_pcm_chunk_returns_503(self):
+        """Provider returning truncated PCM chunk fails strict validation and returns 503, never partial audio."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None)
+        raw_valid = create_dummy_wav_bytes(duration_sec=0.1, framerate=8000)
+        raw_trunc = raw_valid[:-100]
+        trunc_b64 = base64.b64encode(raw_trunc).decode("utf-8")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"audios": [trunc_b64]}
+        mock_client = MockHttpxClient(mock_resp)
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            with self.assertRaises(VoiceServiceException) as ctx:
+                run_sync(service.speak("Test text", "en"))
+            self.assertEqual(ctx.exception.status_code, 503)
+            self.assertEqual(ctx.exception.code, "VOICE_PROVIDER_UNAVAILABLE")
+
+    def test_speak_inflight_call_cannot_exceed_hard_overall_deadline(self):
+        """In-flight provider call is cancelled and raises 504 when exceeding hard overall deadline."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None, overall_deadline_sec=0.1)
+        mock_client = MagicMock()
+
+        async def slow_post(*args, **kwargs):
+            await asyncio.sleep(0.5)
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.json.return_value = {"audios": ["dummy"]}
+            return resp
+
+        mock_client.__aenter__.return_value.post = slow_post
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            t0 = time.monotonic()
+            with self.assertRaises(VoiceServiceException) as ctx:
+                run_sync(service.speak("Short test", "en"))
+            elapsed = time.monotonic() - t0
+            self.assertEqual(ctx.exception.status_code, 504)
+            self.assertEqual(ctx.exception.code, "VOICE_SYNTHESIS_TIMEOUT")
+            self.assertLess(elapsed, 0.4)
+
+    def test_speak_multiple_batches_cannot_exceed_hard_overall_deadline(self):
+        """Multiple sequential batches cannot cumulatively exceed overall deadline."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None, overall_deadline_sec=0.15)
+        dummy_wav = create_dummy_wav_bytes(framerate=8000)
+        dummy_b64 = base64.b64encode(dummy_wav).decode("utf-8")
+        mock_client = MagicMock()
+
+        async def paced_post(*args, **kwargs):
+            await asyncio.sleep(0.1)
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.json.return_value = {"audios": [dummy_b64] * 3}
+            return resp
+
+        mock_client.__aenter__.return_value.post = paced_post
+
+        four_chunks = ["Chunk 1", "Chunk 2", "Chunk 3", "Chunk 4"]
+        with patch("app.services.voice.synthesis.chunk_text", return_value=four_chunks):
+            with patch("httpx.AsyncClient", return_value=mock_client):
+                t0 = time.monotonic()
+                with self.assertRaises(VoiceServiceException) as ctx:
+                    run_sync(service.speak("Long test", "en"))
+                elapsed = time.monotonic() - t0
+                self.assertEqual(ctx.exception.status_code, 504)
+                self.assertEqual(ctx.exception.code, "VOICE_SYNTHESIS_TIMEOUT")
+                self.assertLess(elapsed, 0.3)
+
+    def test_speak_provider_fallback_cannot_reset_hard_overall_deadline(self):
+        """Provider fallback to OpenAI cannot reset the overall deadline clock."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key="mock_openai", overall_deadline_sec=0.15)
+        mock_client = MagicMock()
+
+        async def slow_sarvam_or_openai(*args, **kwargs):
+            url = args[0] if args else kwargs.get("url", "")
+            await asyncio.sleep(0.1)
+            if "sarvam" in url:
+                resp = MagicMock()
+                resp.status_code = 500
+                return resp
+            # OpenAI
+            await asyncio.sleep(0.1)
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.content = b"mp3data"
+            return resp
+
+        mock_client.__aenter__.return_value.post = slow_sarvam_or_openai
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            t0 = time.monotonic()
+            with self.assertRaises(VoiceServiceException) as ctx:
+                run_sync(service.speak("Fallback test", "en"))
+            elapsed = time.monotonic() - t0
+            self.assertEqual(ctx.exception.status_code, 504)
+            self.assertEqual(ctx.exception.code, "VOICE_SYNTHESIS_TIMEOUT")
+            self.assertLess(elapsed, 0.3)
+
+    def test_speak_no_partial_audio_returned_after_timeout(self):
+        """No partial audio from early batches is returned when a subsequent batch times out."""
+        service = VoiceSynthesisService(sarvam_key="mock_key", openai_key=None, overall_deadline_sec=0.12)
+        dummy_wav = create_dummy_wav_bytes(framerate=8000)
+        dummy_b64 = base64.b64encode(dummy_wav).decode("utf-8")
+        mock_client = MagicMock()
+        call_num = 0
+
+        async def post_first_fast_second_slow(*args, **kwargs):
+            nonlocal call_num
+            call_num += 1
+            if call_num == 1:
+                resp = MagicMock()
+                resp.status_code = 200
+                resp.json.return_value = {"audios": [dummy_b64] * 3}
+                return resp
+            # Batch 2 stalls
+            await asyncio.sleep(0.5)
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.json.return_value = {"audios": [dummy_b64]}
+            return resp
+
+        mock_client.__aenter__.return_value.post = post_first_fast_second_slow
+
+        four_chunks = ["Chunk 1", "Chunk 2", "Chunk 3", "Chunk 4"]
+        with patch("app.services.voice.synthesis.chunk_text", return_value=four_chunks):
+            with patch("httpx.AsyncClient", return_value=mock_client):
+                with self.assertRaises(VoiceServiceException) as ctx:
+                    run_sync(service.speak("Multi batch partial check", "en"))
+                self.assertEqual(ctx.exception.status_code, 504)
+                self.assertEqual(ctx.exception.code, "VOICE_SYNTHESIS_TIMEOUT")
 
 
 if __name__ == "__main__":

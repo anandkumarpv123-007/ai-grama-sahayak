@@ -11,6 +11,7 @@ import re
 import time
 import wave
 import base64
+import asyncio
 import logging
 from typing import Dict, Any, List, Optional
 from app.core.config import settings
@@ -129,9 +130,17 @@ def combine_wav_base64_chunks(b64_chunks: List[str]) -> str:
                             f"width={first_params.sampwidth}, rate={first_params.framerate})"
                         )
 
+                nchannels = params.nchannels
+                sampwidth = params.sampwidth
+                expected_bytes = nframes * nchannels * sampwidth
+
                 frames = wf.readframes(nframes)
-                if len(frames) == 0:
-                    raise ValueError(f"Chunk {idx} returned 0 PCM bytes")
+                if len(frames) != expected_bytes:
+                    raise ValueError(
+                        f"Chunk {idx} PCM data length mismatch: declared {nframes} frames "
+                        f"requires {expected_bytes} bytes (channels={nchannels}, width={sampwidth}), "
+                        f"but received {len(frames)} bytes"
+                    )
                 pcm_data.extend(frames)
         except Exception as e:
             if isinstance(e, ValueError):
@@ -149,11 +158,19 @@ def combine_wav_base64_chunks(b64_chunks: List[str]) -> str:
 class VoiceSynthesisService:
     """Handles text validation and real TTS speech synthesis for Telugu and English."""
 
-    def __init__(self, sarvam_key: Optional[str] = None, openai_key: Optional[str] = None):
-        self.sarvam_key = sarvam_key or os.getenv("SARVAM_API_KEY") or settings.SARVAM_API_KEY
-        self.openai_key = openai_key or os.getenv("OPENAI_API_KEY") or settings.OPENAI_API_KEY
+    def __init__(
+        self,
+        sarvam_key: Optional[str] = None,
+        openai_key: Optional[str] = None,
+        overall_deadline_sec: Optional[float] = None,
+    ):
+        self.sarvam_key = sarvam_key if sarvam_key is not None else (os.getenv("SARVAM_API_KEY") or settings.SARVAM_API_KEY)
+        self.openai_key = openai_key if openai_key is not None else (os.getenv("OPENAI_API_KEY") or settings.OPENAI_API_KEY)
         self.sarvam_model = os.getenv("SARVAM_TTS_MODEL") or settings.SARVAM_TTS_MODEL
         self.sarvam_speaker = os.getenv("SARVAM_TTS_SPEAKER") or settings.SARVAM_TTS_SPEAKER
+        self.overall_deadline_sec = (
+            overall_deadline_sec if overall_deadline_sec is not None else OVERALL_SYNTHESIS_DEADLINE_SEC
+        )
 
     def validate_input(self, text: str, language: str) -> None:
         if not language or language.lower().strip() not in SUPPORTED_LANGUAGES:
@@ -186,12 +203,31 @@ class VoiceSynthesisService:
         Requires configured real external TTS provider (Sarvam AI Bulbul or OpenAI TTS).
         Never returns fake audio chimes or synthetic filler as spoken output.
         Never silently truncates or omits text.
+        Enforces a hard overall wall-clock deadline via asyncio.wait_for across all batches and fallbacks.
         """
         lang = language.lower().strip()
         self.validate_input(text, lang)
 
+        try:
+            return await asyncio.wait_for(
+                self._synthesize_pipeline(text, lang),
+                timeout=self.overall_deadline_sec,
+            )
+        except asyncio.TimeoutError:
+            logger.error("Voice synthesis exceeded hard overall deadline of %.1fs", self.overall_deadline_sec)
+            raise VoiceServiceException(
+                code="VOICE_SYNTHESIS_TIMEOUT",
+                message=f"Voice synthesis exceeded the overall deadline of {self.overall_deadline_sec} seconds.",
+                status_code=504,
+                details=[{"issue": f"Synthesis timed out after {self.overall_deadline_sec:.1f}s"}]
+            )
+        except asyncio.CancelledError:
+            # Re-raise cancellation exceptions without swallowing
+            raise
+
+    async def _synthesize_pipeline(self, text: str, lang: str) -> Dict[str, Any]:
         start_time = time.monotonic()
-        deadline = start_time + OVERALL_SYNTHESIS_DEADLINE_SEC
+        deadline = start_time + self.overall_deadline_sec
         deadline_exceeded = False
 
         # 1. External Provider: Sarvam AI (Native support for Telugu & Indian English)
@@ -326,11 +362,11 @@ class VoiceSynthesisService:
 
         # 3. Check if overall deadline was exceeded
         elapsed = time.monotonic() - start_time
-        if deadline_exceeded or elapsed >= OVERALL_SYNTHESIS_DEADLINE_SEC:
-            logger.error("Voice synthesis exceeded overall deadline of %.1fs (elapsed: %.1fs)", OVERALL_SYNTHESIS_DEADLINE_SEC, elapsed)
+        if deadline_exceeded or elapsed >= self.overall_deadline_sec:
+            logger.error("Voice synthesis exceeded overall deadline of %.1fs (elapsed: %.1fs)", self.overall_deadline_sec, elapsed)
             raise VoiceServiceException(
                 code="VOICE_SYNTHESIS_TIMEOUT",
-                message=f"Voice synthesis exceeded the overall deadline of {OVERALL_SYNTHESIS_DEADLINE_SEC} seconds.",
+                message=f"Voice synthesis exceeded the overall deadline of {self.overall_deadline_sec} seconds.",
                 status_code=504,
                 details=[{"issue": f"Synthesis timed out after {elapsed:.1f}s"}]
             )
