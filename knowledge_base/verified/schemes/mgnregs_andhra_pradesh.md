@@ -26,10 +26,15 @@ The Mahatma Gandhi National Rural Employment Guarantee Scheme (MGNREGS) is desig
 * **Worksite Amenities:** Provision of essential facilities including safe drinking water, shade for resting, and a first-aid kit at active worksites.
 * **తెలుగు వివరణ:** గ్రామ పంచాయతీ / సచివాలయంలో దరఖాస్తు చేసుకోవడం ద్వారా జాబ్ కార్డు పొందవచ్చు. పని కోరిన వారికి ప్రభుత్వం మార్గదర్శకాల ప్రకారం పనులు కేటాయిస్తుంది. దినసరి కూలి వేతనాలు కేంద్ర గ్రామీణాభివృద్ధి మంత్రిత్వ శాఖ (MoRD) ద్వారా ఎప్పటికప్పుడు సమీక్షించబడి నోటిఫై చేయబడతాయి (తాజా వేతన వివరాలను సచివాలయంలో లేదా పోర్టల్‌లో తెలుసుకోవచ్చు). కూలి డబ్బులు నేరుగా బ్యాంకు లేదా పోస్టాఫీసు ఖాతాలో డీబీటీ ద్వారా జమవుతాయి. పని ప్రదేశంలో తాగునీరు, నీడ మరియు ప్రథమ చికిత్స సౌకర్యాలు కల్పించడం నిబంధనల్లో భాగం.
 
-## 3. How to Apply & Verify Records (దరఖాస్తు విధానం మరియు రికార్డుల తనిఖీ)
-* Approach the Panchayat Secretary, Field Assistant, or Engineering Assistant at the local **Grama Sachivalayam (గ్రామ సచివాలయం)**.
-* Submit household application with Aadhaar cards and photographs of adult family members.
-* Workers can verify their Job Card status, muster rolls, wage slips, and payment disbursement logs online:
-  * AP State Portal: `https://nrega.ap.gov.in`
+## 3. How to Apply, Documents & Verify Records (దరఖాస్తు విధానం, పత్రాలు మరియు తనిఖీ)
+* **Job Card Application & Work Demand:** Adult rural residents approach the Panchayat Secretary, Field Assistant (FA), or Engineering Assistant at their local **Grama Sachivalayam (గ్రామ సచివాలయం)**. Workers submit a work demand application (Form 6) and receive a dated written receipt, with statutory work allocation guaranteed within 15 days.
+* **Required Documents:**
+  1. Aadhaar Cards of all adult family members willing to do unskilled manual work.
+  2. BPL White Ration Card / Rice Card (for rural residency verification).
+  3. Active Aadhaar-seeded, NPCI-linked Bank or Post Office Savings Account passbook.
+  4. Passport-size photographs of adult applicants for the household Job Card.
+* **Online Records and Grievance Channels:**
+  * AP State NREGS Portal: `https://nrega.ap.gov.in`
   * National MGNREGA Portal: `https://nrega.nic.in`
-* State MGNREGS Ombudsman & Grievance Toll-Free Helpline: **1800-425-2123**.
+  * State MGNREGS Ombudsman & Grievance Toll-Free Helpline: **1800-425-2123** / Spandana: **1902**
+* **తెలుగు వివరణ:** దరఖాస్తు విధానం, పత్రాలు మరియు రికార్డుల తనిఖీ: గ్రామీణ ప్రాంతాల్లోని వయోజనులు స్థానిక గ్రామ సచివాలయంలో పంచాయతీ కార్యదర్శి లేదా ఫీల్డ్ అసిస్టెంట్‌ను (FA) సంప్రదించి జాబ్ కార్డు కోసం దరఖాస్తు చేసుకోవాలి. అవసరమైన పత్రాలు: 1. పని చేయగోరే కుటుంబ వయోజనులందరి ఆధార్ కార్డులు, 2. రైస్ కార్డు, 3. ఆధార్ అనుసంధాన బ్యాంక్ లేదా పోస్టాఫీసు పాస్‌బుక్, 4. పాస్‌పోర్ట్ సైజు ఫోటోలు. జాబ్ కార్డు పొందిన తర్వాత పని కోసం ఫారం-6 దరఖాస్తు సమర్పించి రసీదు పొందాలి; నిబంధనల ప్రకారం 15 రోజుల్లోగా పని కల్పించాలి. కూలి డబ్బులు నేరుగా ఆధార్ సీడెడ్ ఖాతాలకు డీబీటీ ద్వారా జమ అవుతాయి. కూలీలు తమ మస్టర్ రోల్స్, హాజరు, వేతన రసీదులను nrega.ap.gov.in పోర్టల్‌లో లేదా సచివాలయంలో తనిఖీ చేసుకోవచ్చు. సమస్యల పరిష్కారానికి అంబుడ్స్‌మన్ ఉచిత హెల్ప్‌లైన్ 1800-425-2123 లేదా స్పందన 1902 కు కాల్ చేయవచ్చు.

@@ -26,8 +26,14 @@ The Soil Health Card scheme assesses the nutrient status of agricultural holding
 * **Schedule:** Interactive field sessions where Village Agriculture Assistants (VAAs) and Agricultural Officers demonstrate live pest identification, economic threshold levels (ETL), and eco-friendly remedies directly on farmers' fields.
 * **తెలుగు వివరణ:** పొలం బడి ద్వారా గ్రామంలోని ఆర్ఎస్కే / ఆర్బీకేల పరిధిలో ప్రతి వారం రైతులకు సమగ్ర సస్యరక్షణ, సేంద్రియ సాగు, పురుగుమందుల వాడకం నియంత్రణ మరియు తెగుళ్ళ నివారణపై ప్రత్యక్ష పొలాల్లో శిక్షణ ఇస్తారు.
 
-## 3. How to Obtain Services (సేవలు పొందే విధానం)
-* Farmers can request soil testing and enroll for Polam Badi training sessions at their local **Rythu Seva Kendra (RSK) / Rythu Bharosa Kendra (RBK)** or Grama Sachivalayam.
-* Soil Health Cards can also be viewed and downloaded using Aadhaar number or village survey numbers from official portals:
-  * National Portal: `https://soilhealth.dac.gov.in`
+## 3. How to Obtain Services, Documents & Helplines (సేవలు పొందే విధానం, పత్రాలు మరియు సంప్రదింపులు)
+* **Where to Apply:** Farmers can request soil testing and enroll for weekly Polam Badi participatory training sessions at their local **Rythu Seva Kendra (RSK) / Rythu Bharosa Kendra (RBK)** or Grama Sachivalayam through the Village Agriculture Assistant (VAA).
+* **Required Documents & Details:**
+  1. Aadhaar Card of the farmer.
+  2. Pattadar Passbook / 1B revenue document or land survey numbers.
+  3. Active mobile number to receive SMS test status updates.
+* **Official Portals and Helplines:**
+  * National Soil Health Portal: `https://soilhealth.dac.gov.in`
   * AP Agriculture Portal: `https://apagrisnet.gov.in`
+  * Kisan Call Centre Toll-Free Helpline: **1800-180-1551** / Spandana: **1902**
+* **తెలుగు వివరణ:** సేవలు పొందే విధానం మరియు పత్రాలు: రైతులు తమ సమీపంలోని రైతు సేవా కేంద్రం (RSK/RBK) లేదా గ్రామ సచివాలయంలో గ్రామ వ్యవసాయ సహాయకుడిని (VAA) కలిసి భూసార పరీక్షలకు దరఖాస్తు చేసుకోవచ్చు మరియు పొలం బడి శిక్షణ తరగతుల్లో నమోదు చేసుకోవచ్చు. అవసరమైన పత్రాలు: 1. రైతు ఆధార్ కార్డు, 2. భూమి పట్టాదారు పాస్‌బుక్ లేదా సర్వే నంబర్ వివరాలు, 3. మొబైల్ నంబర్. మట్టి నమూనాలను శాస్త్రీయ పద్ధతిలో సేకరించి ల్యాబ్‌కు పంపుతారు. ఫలితాల అనంతరం సాయిల్ హెల్త్ కార్డులను ఆర్ఎస్కే వద్ద లేదా soilhealth.dac.gov.in మరియు apagrisnet.gov.in పోర్టల్స్ ద్వారా డౌన్‌లోడ్ చేసుకోవచ్చు. సందేహాలకు కిసాన్ కాల్ సెంటర్ 1800-180-1551 లేదా స్పందన 1902 ను సంప్రదించవచ్చు.
