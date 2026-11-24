@@ -493,7 +493,7 @@ class BaseSpecialistAgent(ABC):
         if is_te and te_explanation:
             portals_or_helplines = [
                 l for l in cleaned_lines
-                if ("http" in l or re.search(r"\b(?:108|104|14555|155251|1800-180-1551|14447|1902|14417|1800-425-6776|1800-425-2123)\b", l))
+                if ("http" in l or re.search(r"\b(?:108|104|14555|155251|1800-180-1551|14447|1902|1800-425-6776|1800-425-2123)\b", l))
                 and "తెలుగు వివరణ" not in l
             ]
             parts = [te_explanation]
