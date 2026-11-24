@@ -79,6 +79,15 @@ export function getConnectivityState(): ConnectivityState {
   return currentState;
 }
 
+export function setSimulatedConnectivity(status: ConnectivityStatus): void {
+  updateState({
+    status,
+    isBrowserOnline: status !== "offline",
+    isBackendReachable: status === "online",
+    lastChecked: new Date().toISOString(),
+  });
+}
+
 export function subscribeConnectivity(listener: ConnectivityListener): () => void {
   listeners.add(listener);
 
@@ -87,6 +96,10 @@ export function subscribeConnectivity(listener: ConnectivityListener): () => voi
 
   // Set up window event listeners once
   if (typeof window !== "undefined") {
+    // Expose test helper for automated testing
+    (window as unknown as { __setConnectivity?: typeof setSimulatedConnectivity }).__setConnectivity =
+      setSimulatedConnectivity;
+
     const handleOnline = () => {
       probeBackendHealth();
     };

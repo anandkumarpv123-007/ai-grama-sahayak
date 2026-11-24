@@ -698,8 +698,8 @@ export default function Home() {
 
         if (offlineMatch) {
           const cachedMarkdown = isTe
-            ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 నిల్వ తేదీ: ${offlineMatch.lastUpdated} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ మార్గదర్శకాలు మారవచ్చు. నెట్‌వర్క్ పునరుద్ధరించబడిన తర్వాత గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
-            : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Cached: ${offlineMatch.lastUpdated} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government rules may change. Confirm live eligibility once connection is restored).*`;
+            ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 అధికారిక ధృవీకరణ: ${offlineMatch.verifiedDate} | స్థానిక నిల్వ: ${offlineMatch.cachedAt} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ మార్గదర్శకాలు మారవచ్చు. నెట్‌వర్క్ పునరుద్ధరించబడిన తర్వాత గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
+            : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Source Verified: ${offlineMatch.verifiedDate} | Local Cache: ${offlineMatch.cachedAt} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government rules may change. Confirm live eligibility once connection is restored).*`;
 
           const cachedAssistantMsg: ChatMessage = {
             id: messageIdCounterRef.current++,
@@ -760,8 +760,8 @@ export default function Home() {
 
       if (isFallbackAnswer && offlineMatch) {
         const cachedMarkdown = isTe
-          ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\nలైవ్ సర్వర్‌లో నిర్దిష్ట వివరాలు లేనందున, ధృవీకరించబడిన ప్రజా సమాచార నిల్వ నుండి వివరాలు అందించబడుతున్నాయి:\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 నిల్వ తేదీ: ${offlineMatch.lastUpdated} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ సంక్షేమ మార్గదర్శకాలు మారవచ్చు. స్థానిక గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
-          : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\nServing from verified public cache as live search returned no direct match:\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Cached: ${offlineMatch.lastUpdated} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government guidelines may vary. Confirm with local Grama Sachivalayam).*`;
+          ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\nలైవ్ సర్వర్‌లో నిర్దిష్ట వివరాలు లేనందున, ధృవీకరించబడిన ప్రజా సమాచార నిల్వ నుండి వివరాలు అందించబడుతున్నాయి:\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 అధికారిక ధృవీకరణ: ${offlineMatch.verifiedDate} | స్థానిక నిల్వ: ${offlineMatch.cachedAt} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ సంక్షేమ మార్గదర్శకాలు మారవచ్చు. స్థానిక గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
+          : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\nServing from verified public cache as live search returned no direct match:\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Source Verified: ${offlineMatch.verifiedDate} | Local Cache: ${offlineMatch.cachedAt} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government guidelines may vary. Confirm with local Grama Sachivalayam).*`;
 
         const cachedAssistantMsg: ChatMessage = {
           id: messageIdCounterRef.current++,
@@ -805,8 +805,8 @@ export default function Home() {
       const offlineMatch = findOfflinePublicInfo(trimmedQuestion);
       if (offlineMatch) {
         const cachedMarkdown = isTe
-          ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\nసర్వర్ అనుసంధాన లోపం ఏర్పడినందున, స్థానిక ధృవీకరించబడిన ప్రజా నిల్వ నుండి సమాచారం అందించబడుతోంది:\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 నిల్వ తేదీ: ${offlineMatch.lastUpdated} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ మార్గదర్శకాలు మారవచ్చు. స్థానిక గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
-          : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\nServer temporarily unreachable; served safely from verified offline public cache:\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Cached: ${offlineMatch.lastUpdated} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government guidelines may vary. Confirm with local Grama Sachivalayam).*`;
+          ? `📦 **ఆఫ్‌లైన్ నిల్వ సమాచారం (${offlineMatch.titleTe})**\n\nసర్వర్ అనుసంధాన లోపం ఏర్పడినందున, స్థానిక ధృవీకరించబడిన ప్రజా నిల్వ నుండి సమాచారం అందించబడుతోంది:\n\n**ప్రయోజనం:** ${offlineMatch.benefitTe}\n\n**అర్హత నిబంధనలు:**\n${offlineMatch.eligibilityTe.map((e) => `* ${e}`).join("\n")}\n\n**మినహాయింపులు:**\n${offlineMatch.exclusionsTe.map((x) => `* ${x}`).join("\n")}\n\n**దరఖాస్తు విధానం:** ${offlineMatch.procedureTe}\n\n*🕒 అధికారిక ధృవీకరణ: ${offlineMatch.verifiedDate} | స్థానిక నిల్వ: ${offlineMatch.cachedAt} | ఆధారం: ${offlineMatch.verifiedSource}*\n\n*(గమనిక: ప్రభుత్వ మార్గదర్శకాలు మారవచ్చు. స్థానిక గ్రామ సచివాలయంలో ప్రస్తుత అర్హతను ధృవీకరించుకోండి).*`
+          : `📦 **Cached Public Information (${offlineMatch.titleEn})**\n\nServer temporarily unreachable; served safely from verified offline public cache:\n\n**Benefit:** ${offlineMatch.benefitEn}\n\n**Eligibility Criteria:**\n${offlineMatch.eligibilityEn.map((e) => `* ${e}`).join("\n")}\n\n**Exclusions:**\n${offlineMatch.exclusionsEn.map((x) => `* ${x}`).join("\n")}\n\n**Application Channel:** ${offlineMatch.procedureEn}\n\n*🕒 Source Verified: ${offlineMatch.verifiedDate} | Local Cache: ${offlineMatch.cachedAt} | Source: ${offlineMatch.verifiedSource}*\n\n*(Caution: Government guidelines may vary. Confirm with local Grama Sachivalayam).*`;
 
         const cachedAssistantMsg: ChatMessage = {
           id: messageIdCounterRef.current++,
@@ -862,15 +862,16 @@ export default function Home() {
     const target = textToSave || question || lastFailedMessageRef.current;
     if (!target || !target.trim()) return;
 
-    const res = saveQuestionForLater(target, getAssistantId(), language);
+    // Save with explicit citizen consent and strict privacy validation
+    const res = saveQuestionForLater(target, getAssistantId(), language, true);
     if (res.success) {
       setSavedActionToast(isTe ? "ప్రశ్న సేవ్ చేయబడింది! ✓" : "Question saved for later! ✓");
       refreshSavedQuestions();
       setQuestion("");
       setTimeout(() => setSavedActionToast(null), 3000);
     } else {
-      setSavedActionToast(res.message || "Could not save question");
-      setTimeout(() => setSavedActionToast(null), 3000);
+      setSavedActionToast(res.message || (isTe ? "ప్రశ్నను సేవ్ చేయడం సాధ్యం కాలేదు." : "Could not save question."));
+      setTimeout(() => setSavedActionToast(null), 5000);
     }
   };
 
@@ -1458,8 +1459,8 @@ export default function Home() {
               </span>
               <p className="question-hint">
                 {isTe
-                  ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు. నెట్‌వర్క్ లేనప్పుడు ప్రశ్నలను తర్వాత కోసం సేవ్ చేసుకోవచ్చు."
-                  : "You can type in Telugu or English. When offline, save questions to submit when connected."}
+                  ? "మీరు తెలుగు లేదా ఇంగ్లీషులో టైప్ చేయవచ్చు. ఆధార్, బ్యాంక్ లేదా రహస్య వివరాలను సేవ్ చేయవద్దు; సాధారణ ప్రజా ప్రశ్నలను మాత్రమే తర్వాత కోసం సేవ్ చేసుకోండి."
+                  : "You can type in Telugu or English. Do NOT save Aadhaar, bank, or personal IDs; only non-sensitive public inquiries can be saved."}
               </p>
             </div>
           </section>
