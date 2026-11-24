@@ -87,6 +87,23 @@ export interface GrievanceDraftResponse {
   official_links: (string | GrievanceOfficialLink)[];
 }
 
+export interface EligibilityRequest {
+  scheme_id: string;
+  language?: "en" | "te";
+  applicant_profile: Record<string, unknown>;
+}
+
+export interface EligibilityResponse {
+  scheme_id: string;
+  status: "eligible" | "ineligible" | "needs_more_information" | "unable_to_verify";
+  reasons: string[];
+  missing_fields: string[];
+  benefits: string[];
+  required_documents: string[];
+  application_steps: string[];
+  sources: Source[];
+}
+
 export interface ApiError {
   code: string;
   message: string;
@@ -264,4 +281,24 @@ export async function draftGrievance(
   });
 
   return handleResponse<GrievanceDraftResponse>(res);
+}
+
+/**
+ * Check citizen scheme eligibility (Member 1 / API)
+ */
+export async function checkEligibility(
+  payload: EligibilityRequest,
+  signal?: AbortSignal
+): Promise<EligibilityResponse> {
+  const url = `${API_BASE_URL}/api/eligibility/check`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  return handleResponse<EligibilityResponse>(res);
 }
