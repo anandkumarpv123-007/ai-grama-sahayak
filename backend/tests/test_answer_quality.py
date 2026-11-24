@@ -405,11 +405,11 @@ def test_scheme_benefit_reconciliation_and_conservative_qualifications():
     Audits all key benefit statements across scheme profiles for conservative qualification:
     - Annadata: PM-KISAN Rs. 6,000, state top-up qualified.
     - Thalliki Vandanam: Class I to XII, 75% attendance, amount qualified.
-    - NTR Bharosa: OAP/widow Rs. 4,000, disabled Rs. 6,000, severe disability up to Rs. 15,000.
+    - NTR Bharosa: OAP Rs. 4,000 benchmark; non-OAP amounts and delivery dates removed.
     - Dr. NTR Vaidya Seva: Cashless secondary/tertiary up to Rs. 25 lakh, emergency 108 safeguard.
-    - KCC: 7% interest, 3% PRI -> 4% effective interest.
-    - Vidya Deevena & Vasathi Deevena: 100% tuition (RTF) and boarding (MTF), 75% attendance, Rs. 2.5L income.
-    - MGNREGS: 100 days statutory wage employment guarantee.
+    - KCC: Concessional interest under RBI/GoI guidelines without fixed limits/rates.
+    - Vidya Deevena & Vasathi Deevena: Official assistance schedules without hardcoded amounts.
+    - MGNREGS: Operational guidelines without fixed 100-day entitlement.
     - Housing: Pedalandariki Illu female head of family, 4 construction milestones geo-tagging.
     """
     from app.services.answer_synthesizer import SCHEME_PROFILES
@@ -427,14 +427,19 @@ def test_scheme_benefit_reconciliation_and_conservative_qualifications():
     assert "published notifications" in thalliki["en"]
     assert "75%" in thalliki["te"]
 
-    # 3. NTR Bharosa Pension
+    # 3. NTR Bharosa Pension (conservative qualification: OAP benchmark only)
     pension = SCHEME_PROFILES["schemes_ntr_bharosa_pension"]["benefits"]
     assert "4,000" in pension["en"]
-    assert "6,000" in pension["en"]
-    assert "15,000" in pension["en"]
+    assert "departmental notifications and government orders" in pension["en"]
     assert "రూ. 4,000" in pension["te"]
-    assert "రూ. 6,000" in pension["te"]
-    assert "రూ. 15,000" in pension["te"]
+    assert "అధికారిక ఉత్తర్వులకు లోబడి" in pension["te"]
+    # Non-OAP hardcoded amounts must NOT be in fallback benefits
+    assert "6,000" not in pension["en"]
+    assert "15,000" not in pension["en"]
+    assert "రూ. 6,000" not in pension["te"]
+    assert "రూ. 15,000" not in pension["te"]
+    assert "1st of every month" not in pension["en"]
+    assert "1వ తేదీ" not in pension["te"]
 
     # 4. Dr. NTR Vaidya Seva
     vaidya = SCHEME_PROFILES["health_dr_ntr_vaidya_seva_aarogyasri"]["benefits"]
@@ -443,25 +448,162 @@ def test_scheme_benefit_reconciliation_and_conservative_qualifications():
     assert "Pre-Authorization" in vaidya["en"]
     assert "రూ. 25,00,000" in vaidya["te"]
 
-    # 5. KCC
+    # 5. KCC (no fixed interest or loan guarantees)
     kcc = SCHEME_PROFILES["agri_kisan_credit_card"]["benefits"]
-    assert "7%" in kcc["en"] and "4%" in kcc["en"] and "3%" in kcc["en"]
-    assert "3,00,000" in kcc["en"]
+    assert "3,00,000" not in kcc["en"]
+    assert "7%" not in kcc["en"]
+    assert "4%" not in kcc["en"]
+    assert "3,00,000" not in kcc["te"]
+    assert "7%" not in kcc["te"]
+    assert "4%" not in kcc["te"]
+    assert "Government of India and RBI guidelines" in kcc["en"]
 
-    # 6. Scholarships
+    # 6. Scholarships (no hardcoded Vasathi Deevena amounts)
     scholarship = SCHEME_PROFILES["edu_vidya_deevena_vasathi_deevena"]["benefits"]
     assert "tuition fee reimbursement" in scholarship["en"].lower()
-    assert "10,000" in scholarship["en"] and "20,000" in scholarship["en"]
+    assert "10,000" not in scholarship["en"]
+    assert "15,000" not in scholarship["en"]
+    assert "20,000" not in scholarship["en"]
+    assert "10,000" not in scholarship["te"]
+    assert "15,000" not in scholarship["te"]
+    assert "20,000" not in scholarship["te"]
+    assert "official assistance schedules" in scholarship["en"]
 
-    # 7. MGNREGS
-    nregs = SCHEME_PROFILES["schemes_mgnregs_andhra_pradesh"]["benefits"]
-    assert "100 days" in nregs["en"]
-    assert "100 రోజుల" in nregs["te"]
+    # 7. MGNREGS (no fixed 100-day entitlement)
+    nregs_ben = SCHEME_PROFILES["schemes_mgnregs_andhra_pradesh"]["benefits"]
+    nregs_ov = SCHEME_PROFILES["schemes_mgnregs_andhra_pradesh"]["overview"]
+    assert "100 days" not in nregs_ben["en"]
+    assert "100 days" not in nregs_ov["en"]
+    assert "100 రోజుల" not in nregs_ben["te"]
+    assert "100 రోజుల" not in nregs_ov["te"]
 
     # 8. Housing
     housing = SCHEME_PROFILES["schemes_pedalandariki_illu_housing"]["benefits"]
     assert "female head of the household" in housing["en"]
     assert "milestones" in housing["en"].lower()
+
+    # 9. Samagra Shiksha helplines (no unverified 14417)
+    shiksha = SCHEME_PROFILES["edu_samagra_shiksha_ap"]
+    assert "14417" not in shiksha["helplines"]
+    assert "14417" not in shiksha["application"]["en"]
+    assert "14417" not in shiksha["application"]["te"]
+
+
+def test_no_unsupported_fallback_claims_in_synthesized_answers():
+    """
+    Validates that when fallback profiles are synthesized (no chunks provided),
+    unsupported policy amounts and unverified helplines cannot appear in English or Telugu.
+    """
+    from app.services.answer_synthesizer import synthesize_scheme_answer, LanguageCode
+
+    # 1. NTR Bharosa: OAP Rs. 4,000 only; no 6,000 / 15,000 / 1st of month
+    pension_en = synthesize_scheme_answer(
+        query="What are the monthly pension amounts under NTR Bharosa?",
+        doc_id="schemes_ntr_bharosa_pension",
+        intent="benefits",
+        language=LanguageCode.EN,
+        chunks=None,
+    )
+    assert "4,000" in pension_en
+    assert "6,000" not in pension_en
+    assert "15,000" not in pension_en
+    assert "1st of every month" not in pension_en
+
+    pension_te = synthesize_scheme_answer(
+        query="ఎన్టీఆర్ భరోసా పింఛను మొత్తాలు ఎంత?",
+        doc_id="schemes_ntr_bharosa_pension",
+        intent="benefits",
+        language=LanguageCode.TE,
+        chunks=None,
+    )
+    assert "4,000" in pension_te
+    assert "6,000" not in pension_te
+    assert "15,000" not in pension_te
+    assert "1వ తేదీ" not in pension_te
+
+    # 2. MGNREGS: no 100-day entitlement
+    mgnregs_en = synthesize_scheme_answer(
+        query="What are the wage employment entitlements under MGNREGS?",
+        doc_id="schemes_mgnregs_andhra_pradesh",
+        intent="benefits",
+        language=LanguageCode.EN,
+        chunks=None,
+    )
+    assert "100 days" not in mgnregs_en
+
+    mgnregs_te = synthesize_scheme_answer(
+        query="ఉపాధి హామీ కింద ఎన్ని రోజుల పని లభిస్తుంది?",
+        doc_id="schemes_mgnregs_andhra_pradesh",
+        intent="benefits",
+        language=LanguageCode.TE,
+        chunks=None,
+    )
+    assert "100 రోజుల" not in mgnregs_te
+
+    # 3. Vasathi Deevena: no 10,000 / 15,000 / 20,000
+    scholarship_en = synthesize_scheme_answer(
+        query="How much financial assistance is given under Vasathi Deevena?",
+        doc_id="edu_vidya_deevena_vasathi_deevena",
+        intent="benefits",
+        language=LanguageCode.EN,
+        chunks=None,
+    )
+    assert "10,000" not in scholarship_en
+    assert "15,000" not in scholarship_en
+    assert "20,000" not in scholarship_en
+
+    scholarship_te = synthesize_scheme_answer(
+        query="వసతి దీవెన కింద ఎంత మొత్తం అందుతుంది?",
+        doc_id="edu_vidya_deevena_vasathi_deevena",
+        intent="benefits",
+        language=LanguageCode.TE,
+        chunks=None,
+    )
+    assert "10,000" not in scholarship_te
+    assert "15,000" not in scholarship_te
+    assert "20,000" not in scholarship_te
+
+    # 4. KCC: no 3,00,000 / 7% / 4% guarantees
+    kcc_en = synthesize_scheme_answer(
+        query="What is the interest rate and loan limit for Kisan Credit Card?",
+        doc_id="agri_kisan_credit_card",
+        intent="benefits",
+        language=LanguageCode.EN,
+        chunks=None,
+    )
+    assert "3,00,000" not in kcc_en
+    assert "7%" not in kcc_en
+    assert "4%" not in kcc_en
+
+    kcc_te = synthesize_scheme_answer(
+        query="కిసాన్ క్రెడిట్ కార్డు వడ్డీ రేటు ఎంత?",
+        doc_id="agri_kisan_credit_card",
+        intent="benefits",
+        language=LanguageCode.TE,
+        chunks=None,
+    )
+    assert "3,00,000" not in kcc_te
+    assert "7%" not in kcc_te
+    assert "4%" not in kcc_te
+
+    # 5. Samagra Shiksha: no 14417 helpline
+    shiksha_en = synthesize_scheme_answer(
+        query="How to contact Samagra Shiksha helpline?",
+        doc_id="edu_samagra_shiksha_ap",
+        intent="application",
+        language=LanguageCode.EN,
+        chunks=None,
+    )
+    assert "14417" not in shiksha_en
+
+    shiksha_te = synthesize_scheme_answer(
+        query="సమగ్ర శిక్ష సంప్రదింపు వివరాలు ఏమిటి?",
+        doc_id="edu_samagra_shiksha_ap",
+        intent="application",
+        language=LanguageCode.TE,
+        chunks=None,
+    )
+    assert "14417" not in shiksha_te
 
 
 def test_member2_commit_knowledge_compatibility():
