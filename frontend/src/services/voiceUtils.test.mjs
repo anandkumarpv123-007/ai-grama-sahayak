@@ -5,6 +5,9 @@ import {
   prepareSpeechText,
   splitIntoSentenceChunks,
   selectBrowserVoice,
+  getSupportedMimeType,
+  getAudioFilenameAndType,
+  formatDuration,
 } from "./voiceUtils.ts";
 
 test("cleanTextForSpeech removes markdown formatting and URLs", () => {
@@ -103,4 +106,55 @@ test("selectBrowserVoice selects English voice for English requests", () => {
   const resEmptyTe = selectBrowserVoice([], true);
   assert.equal(resEmptyTe.hasGenuineVoice, false);
   assert.equal(resEmptyTe.targetLang, "te-IN");
+});
+
+test("getSupportedMimeType selects first supported format or falls back", () => {
+  // Mock where webm is supported
+  const checkWebm = (t) => t.includes("webm");
+  assert.equal(getSupportedMimeType(checkWebm), "audio/webm;codecs=opus");
+
+  // Mock where only mp4 is supported (e.g. Safari)
+  const checkMp4 = (t) => t.includes("mp4");
+  assert.equal(getSupportedMimeType(checkMp4), "audio/mp4");
+
+  // Mock where nothing is supported
+  assert.equal(getSupportedMimeType(() => false), "");
+
+  // Missing function / window
+  assert.equal(getSupportedMimeType(null), "");
+});
+
+test("getAudioFilenameAndType maps blob formats accurately without renaming WebM to WAV", () => {
+  // WebM container
+  const webm = getAudioFilenameAndType({ type: "audio/webm;codecs=opus" });
+  assert.equal(webm.filename, "recording.webm");
+  assert.equal(webm.mimeType, "audio/webm");
+
+  // MP4 / M4A container (Safari)
+  const mp4 = getAudioFilenameAndType({ type: "audio/mp4" });
+  assert.equal(mp4.filename, "recording.m4a");
+  assert.equal(mp4.mimeType, "audio/mp4");
+
+  // Ogg container
+  const ogg = getAudioFilenameAndType({ type: "audio/ogg;codecs=opus" });
+  assert.equal(ogg.filename, "recording.ogg");
+  assert.equal(ogg.mimeType, "audio/ogg");
+
+  // WAV container
+  const wav = getAudioFilenameAndType({ type: "audio/wav" });
+  assert.equal(wav.filename, "recording.wav");
+  assert.equal(wav.mimeType, "audio/wav");
+
+  // Fallback / empty type
+  const fallback = getAudioFilenameAndType({ type: "" });
+  assert.equal(fallback.filename, "recording.webm");
+  assert.equal(fallback.mimeType, "audio/webm");
+});
+
+test("formatDuration formats seconds to mm:ss cleanly", () => {
+  assert.equal(formatDuration(0), "00:00");
+  assert.equal(formatDuration(7), "00:07");
+  assert.equal(formatDuration(30), "00:30");
+  assert.equal(formatDuration(65), "01:05");
+  assert.equal(formatDuration(-5), "00:00");
 });

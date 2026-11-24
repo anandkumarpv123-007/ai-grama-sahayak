@@ -1604,6 +1604,35 @@ a {
   }
 }
 
+.voice-control-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.voice-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  background: #fff1f2;
+  color: #b92534;
+  border: 1.5px solid #b92534;
+  border-radius: 9999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 48px;
+}
+
+.voice-cancel-button:hover {
+  background: #b92534;
+  color: #ffffff;
+}
+
 /* =========================================================================
    Scheme Eligibility Component Styles (Phase 5B.1 Task 1)
    ========================================================================= */

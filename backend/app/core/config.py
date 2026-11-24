@@ -1,7 +1,11 @@
 import os
+from pathlib import Path
 from typing import List, Optional
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+REPO_DIR = BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -44,8 +48,30 @@ class Settings(BaseSettings):
         description="Application secret key. Must be replaced with strong secret in production.",
     )
 
+    # Voice Services Configuration (Sarvam AI / Whisper)
+    SARVAM_API_KEY: Optional[str] = Field(
+        default=None,
+        description="API subscription key for Sarvam AI speech services.",
+    )
+    SARVAM_STT_MODEL: str = Field(
+        default="saaras:v4",
+        description="Sarvam AI Speech-to-Text model identifier (default: saaras:v4).",
+    )
+    SARVAM_TTS_MODEL: str = Field(
+        default="bulbul:v3",
+        description="Sarvam AI Text-to-Speech model identifier (default: bulbul:v3).",
+    )
+    SARVAM_TTS_SPEAKER: str = Field(
+        default="kavitha",
+        description="Sarvam AI Text-to-Speech speaker persona (default: kavitha).",
+    )
+    OPENAI_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Optional OpenAI API key for fallback speech transcription/synthesis.",
+    )
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(str(REPO_DIR / ".env"), str(BACKEND_DIR / ".env")),
         env_file_encoding="utf-8",
         extra="ignore",
     )
