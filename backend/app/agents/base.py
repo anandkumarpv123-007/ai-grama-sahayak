@@ -4,6 +4,12 @@ from typing import Any, Dict, List, Optional
 from app.schemas.common import AssistantIdentifier, LanguageCode, Source
 from app.core.emergency_detector import check_clinical_emergency
 from app.services.retrieval.scheme_registry import detect_scheme_details, SCHEME_REGISTRY
+from app.services.answer_synthesizer import (
+    detect_query_intent,
+    synthesize_scheme_answer,
+    sanitize_english_text,
+    sanitize_telugu_text,
+)
 
 
 SCHEME_TAILORED_FOLLOW_UPS: Dict[str, Dict[str, List[str]]] = {
@@ -312,6 +318,40 @@ class BaseSpecialistAgent(ABC):
             if c_doc_id and c_doc_id not in distinct_docs:
                 distinct_docs[c_doc_id] = c
 
+        intent = detect_query_intent(query, language)
+
+        first_chunk = chunks[0] if chunks else None
+        first_doc_id = ""
+        if first_chunk:
+            meta = first_chunk.get("metadata", {}) if isinstance(first_chunk, dict) else getattr(first_chunk, "metadata", {})
+            first_doc_id = meta.get("doc_id", "")
+
+        # When a single verified scheme document is primarily targeted, synthesize via verified scheme profiles
+        if len(distinct_docs) < 2 and first_doc_id:
+            scheme_answer = synthesize_scheme_answer(
+                query=query,
+                doc_id=first_doc_id,
+                intent=intent,
+                language=language,
+                state=state,
+                district=district,
+                chunks=chunks,
+            )
+            if scheme_answer:
+                # Prepend historical note if user mentioned historical name and it is not already in the answer
+                if hist_note and hist_note not in scheme_answer:
+                    if "\n\n" in scheme_answer and scheme_answer.startswith("["):
+                        prefix, rest = scheme_answer.split("\n\n", 1)
+                        scheme_answer = f"{prefix}\n\n{hist_note}\n\n{rest}"
+                    else:
+                        scheme_answer = f"{hist_note}\n\n{scheme_answer}"
+
+                if not is_te:
+                    scheme_answer = sanitize_english_text(scheme_answer)
+                else:
+                    scheme_answer = sanitize_telugu_text(scheme_answer)
+                return scheme_answer
+
         if len(distinct_docs) >= 2:
             selected_chunks = list(distinct_docs.values())[:3]
         else:
@@ -460,17 +500,13 @@ class BaseSpecialistAgent(ABC):
                 if filtered:
                     cleaned_lines = filtered
         else:
-            # For English queries, strictly eliminate Telugu lines
+            # For English queries, strictly eliminate Telugu lines and sanitize inline Telugu script
             filtered = []
             for l in cleaned_lines:
-                te_chars = len(re.findall(r"[\u0C00-\u0C7F]", l))
-                if l and ('\u0C00' <= l[0] <= '\u0C7F'):
+                clean_l = sanitize_english_text(l)
+                if not clean_l or len(re.findall(r"[a-zA-Z]", clean_l)) < 3:
                     continue
-                if te_chars >= 5 and (te_chars > len(l) * 0.10):
-                    continue
-                if te_chars > 0 and len(re.findall(r"[a-zA-Z]", l)) < 5:
-                    continue
-                filtered.append(l)
+                filtered.append(clean_l)
             if filtered:
                 cleaned_lines = filtered
 
