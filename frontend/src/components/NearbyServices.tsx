@@ -8,22 +8,25 @@ interface NearbyServicesProps {
 }
 
 const SERVICE_TYPES = [
-  { id: "", labelEn: "All Services", labelTe: "అన్ని సేవలు" },
-  { id: "hospital", labelEn: "Hospitals & Primary Health Centers", labelTe: "ఆసుపత్రులు & ప్రాథమిక ఆరోగ్య కేంద్రాలు" },
-  { id: "agriculture", labelEn: "Rythu Bharosa Kendram (RBK)", labelTe: "రైతు భరోసా కేంద్రం (RBK)" },
+  { id: "", labelEn: "All Public Facilities", labelTe: "అన్ని ప్రభుత్వ సేవలు" },
+  { id: "hospital", labelEn: "Government Teaching & District Hospitals", labelTe: "ప్రభుత్వ జనరల్ & జిల్లా ఆసుపత్రులు" },
+  { id: "community_health_centre", labelEn: "Community Health Centres (CHC)", labelTe: "కమ్యూనిటీ హెల్త్ సెంటర్లు (CHC)" },
   { id: "secretariat", labelEn: "Grama / Ward Sachivalayam", labelTe: "గ్రామ / వార్డు సచివాలయం" },
-  { id: "ration_shop", labelEn: "Fair Price / Ration Shop", labelTe: "రేషన్ దుకాణం" },
-  { id: "education", labelEn: "Government Schools & Colleges", labelTe: "ప్రభుత్వ పాఠశాలలు & కళాశాలలు" },
+  { id: "agriculture", labelEn: "Rythu Bharosa Kendram (RBK)", labelTe: "రైతు భరోసా కేంద్రం (RBK)" },
 ];
 
-const SUGGESTED_DISTRICTS = [
-  "Kakinada",
-  "East Godavari",
-  "Visakhapatnam",
-  "Guntur",
-  "Krishna",
-  "Nellore",
-  "Chittoor",
+// Verified Andhra Pradesh Districts from official Member 4 database inventory
+const VERIFIED_DISTRICTS = [
+  { id: "Kakinada", labelEn: "Kakinada (GGH Kakinada)", labelTe: "కాకినాడ (GGH కాకినాడ)" },
+  { id: "Visakhapatnam", labelEn: "Visakhapatnam (KGH)", labelTe: "విశాఖపట్నం (KGH)" },
+  { id: "Guntur", labelEn: "Guntur (GGH Guntur)", labelTe: "గుంటూరు (GGH గుంటూరు)" },
+  { id: "NTR", labelEn: "NTR / Vijayawada (New GGH)", labelTe: "ఎన్టీఆర్ / విజయవాడ (New GGH)" },
+  { id: "Tirupati", labelEn: "Tirupati (SVRR Hospital)", labelTe: "తిరుపతి (SVRR ఆసుపత్రి)" },
+  { id: "Kurnool", labelEn: "Kurnool (GGH Kurnool)", labelTe: "కర్నూలు (GGH కర్నూలు)" },
+  { id: "East Godavari", labelEn: "East Godavari (Rajamahendravaram)", labelTe: "తూర్పు గోదావరి (రాజమహేంద్రవరం)" },
+  { id: "Krishna", labelEn: "Krishna (Machilipatnam)", labelTe: "కృష్ణా (మచిలీపట్నం)" },
+  { id: "Anakapalli", labelEn: "Anakapalli (Area Hospital)", labelTe: "అనకాపల్లి (ఏరియా ఆసుపత్రి)" },
+  { id: "Dr. B.R. Ambedkar Konaseema", labelEn: "Konaseema (Ramachandrapuram)", labelTe: "కోనసీమ (రామచంద్రపురం)" },
 ];
 
 export default function NearbyServices({ language }: NearbyServicesProps) {
@@ -42,13 +45,13 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
     if (!navigator.geolocation) {
       setGeoNotice(
         isTe
-          ? "మీ బ్రౌజర్ లొకేషన్ సేవలను సమర్ధించదు. దయచేసి జిల్లా పేరును నమోదు చేయండి."
-          : "Geolocation is not supported by your browser. Please enter your district."
+          ? "మీ బ్రౌజర్ లొకేషన్ సేవలను సమర్ధించదు. దయచేసి జిల్లాను ఎంచుకోండి."
+          : "Geolocation is not supported by your browser. Please select your district."
       );
       return;
     }
 
-    setGeoNotice(isTe ? "లొకేషన్ అనుమతిని తనిఖీ చేస్తోంది..." : "Requesting device location...");
+    setGeoNotice(isTe ? "లొకేషన్ అనుమతిని తనిఖీ చేస్తోంది..." : "Requesting device GPS coordinates...");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setCoords({
@@ -59,7 +62,7 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
         setGeoNotice(
           isTe
             ? `లొకేషన్ గుర్తించబడింది (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}) ✓`
-            : `Location detected (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}) ✓`
+            : `GPS Location identified (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}) ✓`
         );
       },
       (err) => {
@@ -67,7 +70,7 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
         setGeoNotice(
           isTe
             ? `లొకేషన్ యాక్సెస్ నిరాకరించబడింది (${err.message}). దయచేసి జిల్లా పేరు ద్వారా వెతకండి.`
-            : `Location permission denied (${err.message}). Please search by district name.`
+            : `Location access denied (${err.message}). Please search by district name.`
         );
       },
       { timeout: 10000 }
@@ -96,8 +99,8 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
         if (!district.trim()) {
           setError(
             isTe
-              ? "దయచేసి జిల్లా పేరును నమోదు చేయండి లేదా లొకేషన్ ఉపయోగించండి."
-              : "Please enter a district name or use device location."
+              ? "దయచేసి జిల్లాను ఎంచుకోండి లేదా లొకేషన్ ఉపయోగించండి."
+              : "Please select a district name or use device location."
           );
           setIsLoading(false);
           return;
@@ -112,7 +115,7 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
         if (err.status === 404 || err.status === 503 || err.code === "HTTP_ERROR") {
           setError(
             isTe
-              ? "సమీప సేవల సర్వరు ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది. (Member 4 బాధ్యత: /api/services/nearby)."
+              ? "సమీప సేవల సర్వరు ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది (/api/services/nearby)."
               : `Nearby services backend service is currently offline or unreachable at /api/services/nearby. (${err.message})`
           );
         } else {
@@ -133,13 +136,13 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
   return (
     <div className="tool-card">
       <div className="tool-header">
-        <div className="tool-icon">📍</div>
+        <div className="tool-icon" aria-hidden="true">📍</div>
         <div>
-          <h3>{isTe ? "సమీప ప్రభుత్వ సేవలు & కార్యాలయాలు" : "Nearby Government Services"}</h3>
+          <h3>{isTe ? "సమీప ప్రభుత్వ సేవలు & ఆసుపత్రుల శోధన" : "Nearby Public Health Facilities & Services"}</h3>
           <p className="tool-subtitle">
             {isTe
-              ? "ఆసుపత్రులు, రైతు భరోసా కేంద్రాలు, సచివాలయాల వివరాలు"
-              : "Locate primary health centers, Rythu Bharosa Kendrams & village secretariats"}
+              ? "ఆంధ్రప్రదేశ్ ప్రభుత్వ అధికారిక డైరెక్టరీ ఆధారంగా బోధనాసుపత్రులు మరియు కమ్యూనిటీ హెల్త్ సెంటర్ల వివరాలు"
+              : "Locate verified teaching hospitals & public health centers sourced from official state directories"}
           </p>
         </div>
       </div>
@@ -147,7 +150,7 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
       <div className="services-search-form">
         <div className="form-group">
           <label className="field-label" htmlFor="service-type-select">
-            {isTe ? "సేవ విభాగం" : "Service Category"}
+            {isTe ? "సేవ / ఆసుపత్రి వర్గం:" : "Facility Classification:"}
           </label>
           <select
             id="service-type-select"
@@ -170,40 +173,46 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
               className={`location-tab-btn ${!useGeo ? "active" : ""}`}
               onClick={() => setUseGeo(false)}
             >
-              🏢 {isTe ? "జిల్లా ద్వారా" : "By District"}
+              🏢 {isTe ? "జిల్లా ఎంపిక" : "Select District"}
             </button>
             <button
               type="button"
               className={`location-tab-btn ${useGeo ? "active" : ""}`}
               onClick={requestGeolocation}
             >
-              📍 {isTe ? "నా లొకేషన్" : "Device GPS"}
+              📍 {isTe ? "GPS లొకేషన్" : "Device GPS"}
             </button>
           </div>
 
           {!useGeo ? (
             <div className="district-input-section">
-              <label className="field-label" htmlFor="district-input">
-                {isTe ? "జిల్లా పేరు" : "District Name"}
+              <label className="field-label" htmlFor="district-select">
+                {isTe ? "ఆంధ్రప్రదేశ్ జిల్లా (ధృవీకరించబడిన డైరెక్టరీ):" : "Andhra Pradesh District (Verified Dataset):"}
               </label>
-              <input
-                id="district-input"
-                type="text"
-                className="form-input"
+
+              <select
+                id="district-select"
+                className="form-select"
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
-                placeholder={isTe ? "ఉదా: Kakinada, East Godavari..." : "e.g., Kakinada, Guntur..."}
-              />
+              >
+                {VERIFIED_DISTRICTS.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {isTe ? d.labelTe : d.labelEn}
+                  </option>
+                ))}
+              </select>
+
               <div className="quick-district-chips">
-                <small>{isTe ? "త్వరిత ఎంపిక:" : "Quick pick:"}</small>
-                {SUGGESTED_DISTRICTS.map((d) => (
+                <small>{isTe ? "త్వరిత ఎంపిక (హబ్‌లు):" : "Verified Regional Hubs:"}</small>
+                {VERIFIED_DISTRICTS.slice(0, 5).map((d) => (
                   <button
-                    key={d}
+                    key={d.id}
                     type="button"
-                    className="chip-btn"
-                    onClick={() => setDistrict(d)}
+                    className={`chip-btn ${district === d.id ? "active-chip" : ""}`}
+                    onClick={() => setDistrict(d.id)}
                   >
-                    {d}
+                    {isTe ? d.labelTe.split(" ")[0] : d.id}
                   </button>
                 ))}
               </div>
@@ -211,12 +220,16 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
           ) : (
             <div className="geo-active-box">
               <p>
-                <strong>{isTe ? "GPS లొకేషన్ ఎంచుకోబడింది" : "GPS Mode Active"}</strong>
+                <strong>{isTe ? "📍 GPS మోడ్ సక్రియంగా ఉంది" : "📍 GPS Mode Active"}</strong>
               </p>
               {coords ? (
-                <small>Lat: {coords.lat}, Lng: {coords.lng}</small>
+                <small className="geo-coords-text">
+                  Latitude: {coords.lat}, Longitude: {coords.lng} (Andhra Pradesh Region)
+                </small>
               ) : (
-                <small>{isTe ? "లొకేషన్ పొందడానికి వేచివుంది..." : "Awaiting location..."}</small>
+                <small className="geo-waiting-text">
+                  {isTe ? "పరికర లొకేషన్ కోసం వేచివుంది..." : "Awaiting device GPS coordinates..."}
+                </small>
               )}
             </div>
           )}
@@ -225,17 +238,16 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
         </div>
 
         <button
+          type="button"
           className="primary-button search-services-btn"
           disabled={isLoading}
           onClick={handleSearch}
         >
-          {isLoading
-            ? isTe
-              ? "వెతుకుతోంది..."
-              : "Searching..."
-            : isTe
-            ? "సేవలను కనుగొనండి"
-            : "Find Services"}
+          {isLoading ? (
+            <span>⏳ {isTe ? "వెతుకుతోంది..." : "Searching Directories..."}</span>
+          ) : (
+            <span>🔍 {isTe ? "సేవలను కనుగొనండి" : "Find Verified Facilities"}</span>
+          )}
         </button>
       </div>
 
@@ -249,23 +261,58 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
         </div>
       )}
 
+      {/* Results Section */}
       {services !== null && (
         <div className="services-results-list">
           <div className="results-heading-row">
             <h4>
               {isTe
-                ? `కనుగొన్న సేవలు (${services.length})`
-                : `Registered Services (${services.length})`}
+                ? `ధృవీకరించబడిన ప్రభుత్వ సేవలు (${services.length})`
+                : `Verified Government Facilities (${services.length})`}
             </h4>
+            <span className="dataset-badge">
+              {isTe ? "అధికారిక DME / APVVP డేటా" : "Official DME / APVVP Dataset"}
+            </span>
           </div>
 
           {services.length === 0 ? (
             <div className="empty-results-box">
-              <p>
+              <div className="empty-icon">🏥</div>
+              <h5>
                 {isTe
-                  ? "ఎంచుకున్న ప్రాంతంలో ఎటువంటి సేవలు నమోదు కాలేదు. దయచేసి వేరే జిల్లా లేదా విభాగాన్ని ఎంచుకోండి."
-                  : "No registered services found for this criteria. Try changing the district or service category."}
+                  ? "ఎంచుకున్న జిల్లా / వర్గంలో ప్రస్తుతం డిజిటల్ సౌకర్యాలు నమోదు కాలేదు."
+                  : "No registered facilities found for this specific criteria."}
+              </h5>
+              <p className="empty-explanation">
+                {isTe
+                  ? "ఈ జిల్లాలోని ఆరోగ్య సౌకర్యాల రికార్డులు ఆన్‌బోర్డింగ్ ప్రక్రియలో ఉన్నాయి. అత్యవసర లేదా ఇతర ప్రభుత్వ సేవల కోసం ఈ క్రింది అధికారిక మార్గాలను సంప్రదించండి:"
+                  : "Digitized records for this area are currently undergoing formal directory onboarding. For immediate government health assistance, please use these official statutory channels:"}
               </p>
+              <div className="official-directory-links">
+                <a
+                  href="tel:104"
+                  className="helpline-btn"
+                  title="Dial AP Health Helpline"
+                >
+                  📞 104 {isTe ? "ఆరోగ్య ఉచిత హెల్ప్‌లైన్ (24x7)" : "AP Health Helpline (Toll-Free)"}
+                </a>
+                <a
+                  href="https://gramawardsachivalayam.ap.gov.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="directory-link-btn"
+                >
+                  🏛️ {isTe ? "గ్రామ / వార్డు సచివాలయం పోర్టల్" : "Grama / Ward Sachivalayam Portal"} ↗
+                </a>
+                <a
+                  href="http://cfw.ap.nic.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="directory-link-btn"
+                >
+                  🏥 {isTe ? "ఆరోగ్య & కుటుంబ సంక్షేమ శాఖ" : "AP Health & Family Welfare"} ↗
+                </a>
+              </div>
             </div>
           ) : (
             <div className="service-cards-grid">
@@ -273,25 +320,35 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
                 <div key={idx} className="service-result-card">
                   <div className="service-result-header">
                     <h5>{svc.name}</h5>
-                    <span className="service-tag">{svc.service_type}</span>
+                    <span className="service-tag">
+                      {svc.service_type.replace(/_/g, " ")}
+                    </span>
                   </div>
 
                   <p className="service-address">
-                    📍 {svc.address || (isTe ? "చిరునామా అందుబాటులో లేదు" : "Address not provided")}
+                    📍 {svc.address || (isTe ? "చిరునామా అందుబాటులో లేదు" : "Address not substantiated")}
                   </p>
 
-                  {svc.phone && (
+                  {svc.phone ? (
                     <p className="service-phone">
                       📞{" "}
                       <a href={`tel:${svc.phone}`} className="phone-link">
                         {svc.phone}
                       </a>
                     </p>
+                  ) : (
+                    <p className="service-phone-unlisted">
+                      📞 <small>{isTe ? "నేరుగా ఫోన్ నంబరు డైరెక్టరీలో నమోదు కాలేదు" : "Direct landline unlisted in central directory"}</small>
+                    </p>
                   )}
 
+                  {/* Strictly labeled as approximate straight-line distance per Task 6 */}
                   {svc.distance_km !== null && svc.distance_km !== undefined && (
                     <p className="service-distance">
-                      📏 ~{svc.distance_km.toFixed(1)} km {isTe ? "దూరంలో" : "away"}
+                      📏 ~{svc.distance_km.toFixed(1)} km{" "}
+                      <span className="distance-clarification">
+                        ({isTe ? "సుమారు వైమానిక దూరం / straight-line distance" : "approximate straight-line distance"})
+                      </span>
                     </p>
                   )}
 
@@ -302,7 +359,7 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
                       rel="noopener noreferrer"
                       className="source-link-btn"
                     >
-                      {isTe ? "మరిన్ని వివరాలు / మ్యాప్ ↗" : "Official Details / Map ↗"}
+                      {isTe ? "అధికారిక డైరెక్టరీ ఆధారాలు ↗" : "Official Directory Record ↗"}
                     </a>
                   )}
                 </div>
@@ -312,12 +369,13 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
         </div>
       )}
 
+      {/* Mandatory Accuracy Disclaimer */}
       <div className="privacy-disclaimer">
         <span>🛡️</span>
         <small>
           {isTe
-            ? "సమాచార గమనిక: సేవల వివరాలు అధికారిక డేటాబేస్ నుండి అందించబడతాయి. ప్రయాణించే ముందు వేళలను ధృవీకరించుకోండి."
-            : "Information Notice: Service entries are verified against documented directories. Real-time location is never stored."}
+            ? "ఖచ్చితత్వ గమనిక: సౌకర్యాల స్థానాలు నగరం/ప్రాంత స్థాయి సుమారు స్థానాలు (approximate city-level centers). దూరాలు ఖచ్చితమైన రోడ్డు ప్రయాణ దూరం కాదు, సుమారు వైమానిక దూరం మాత్రమే. అత్యవసర పరిస్థితుల్లో ఎల్లప్పుడూ 108 లేదా 104 కు కాల్ చేయండి."
+            : "Dataset & Distance Accuracy Notice: Facility coordinates represent approximate locality-level centers, not surveyed building GPS pins. Distances are approximate straight-line estimates for general discovery, not driving or road navigation distances. For medical emergencies, call 108 immediately."}
         </small>
       </div>
     </div>

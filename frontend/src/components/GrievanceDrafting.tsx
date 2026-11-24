@@ -8,13 +8,13 @@ interface GrievanceDraftingProps {
 }
 
 const GRIEVANCE_CATEGORIES = [
-  { id: "water_supply", labelEn: "Drinking Water Supply", labelTe: "తాగునీటి సరఫరా సమస్య" },
-  { id: "electricity", labelEn: "Electricity & Power Outage", labelTe: "విద్యుత్ సరఫరా & స్తంభాల సమస్య" },
-  { id: "roads", labelEn: "Roads & Street Infrastructure", labelTe: "రహదారులు & వీధి లైట్ల మరమ్మత్తు" },
-  { id: "ration", labelEn: "Ration & PDS Distribution", labelTe: "రేషన్ & పౌరసరఫరాల సమస్య" },
-  { id: "drainage", labelEn: "Sanitation & Drainage Cleaning", labelTe: "పారిశుధ్యం & డ్రైనేజీ సమస్య" },
-  { id: "welfare", labelEn: "Welfare Scheme Delay / Issue", labelTe: "సంక్షేమ పథకం మంజూరులో ఆలస్యం" },
-  { id: "other", labelEn: "Other Citizen Grievance", labelTe: "ఇతర ప్రజా ఫిర్యాదు" },
+  { id: "water_supply", labelEn: "Drinking Water Supply & Borewell Repairs", labelTe: "తాగునీటి సరఫరా & బోర్‌వెల్ మరమ్మత్తులు" },
+  { id: "electricity", labelEn: "Electricity, Street Lights & Transformers", labelTe: "విద్యుత్ సరఫరా, వీధి దీపాలు & ట్రాన్స్‌ఫార్మర్ సమస్యలు" },
+  { id: "roads", labelEn: "Village Roads & Pothole Repairs", labelTe: "గ్రామీణ రహదారులు & గుంతల మరమ్మత్తులు" },
+  { id: "ration", labelEn: "PDS Ration Distribution & Rice Card Issues", labelTe: "రేషన్ పంపిణీ & బియ్యం కార్డు సమస్యలు" },
+  { id: "drainage", labelEn: "Sanitation, Drain Cleaning & Waste Removal", labelTe: "పారిశుధ్యం, మురుగు కాలువలు & చెత్త తొలగింపు" },
+  { id: "welfare", labelEn: "Welfare Scheme Delay & Pension Issues", labelTe: "సంక్షేమ పథకాలు & పింఛను మంజూరులో ఆలస్యం" },
+  { id: "other", labelEn: "Other Citizen Public Grievances", labelTe: "ఇతర ప్రజా సమస్యలు / ఫిర్యాదులు" },
 ];
 
 export default function GrievanceDrafting({ language }: GrievanceDraftingProps) {
@@ -33,10 +33,11 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
 
   const handleGenerateDraft = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!description.trim()) {
       setError(
         isTe
-          ? "దయచేసి మీ సమస్య వివరాలను వివరించండి."
+          ? "దయచేసి మీ సమస్య వివరాలను కనీసం రెండు వాక్యాలలో వివరించండి."
           : "Please describe your grievance in a few sentences."
       );
       return;
@@ -80,7 +81,7 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
         if (err.status === 404 || err.status === 503 || err.code === "HTTP_ERROR") {
           setError(
             isTe
-              ? "ఫిర్యాదు ముసాయిదా సర్వరు ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది. (Member 4 బాధ్యత: /api/grievances/draft)."
+              ? "ఫిర్యాదు ముసాయిదా సర్వరు ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది (/api/grievances/draft)."
               : `Grievance drafting backend service is currently offline or unreachable at /api/grievances/draft. (${err.message})`
           );
         } else {
@@ -103,20 +104,37 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
     const fullText = `${isTe ? "విషయం:" : "Subject:"} ${draftResult.subject}\n\n${editableBody}`;
     navigator.clipboard.writeText(fullText).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
+      setTimeout(() => setCopied(false), 3500);
     });
   };
 
   return (
     <div className="tool-card">
       <div className="tool-header">
-        <div className="tool-icon">📝</div>
+        <div className="tool-icon" aria-hidden="true">📝</div>
         <div>
-          <h3>{isTe ? "ప్రజా ఫిర్యాదు ముసాయిదా సహాయకుడు" : "Citizen Grievance Drafting"}</h3>
+          <h3>{isTe ? "ప్రజా సమస్యల ఫిర్యాదు ముసాయిదా సహాయకుడు" : "Citizen Grievance Petition Drafting"}</h3>
           <p className="tool-subtitle">
             {isTe
-              ? "సమస్యను వివరించండి — అధికారిక దరఖాస్తు ముసాయిదాను సిద్ధం చేసుకోండి"
-              : "Describe your village issue and generate a formal petition for submission"}
+              ? "మీ గ్రామంలోని సమస్యను వివరించండి — స్పందన లేదా సచివాలయానికి సమర్పించడానికి అధికారిక ముసాయిదా దరఖాస్తును రూపొందించుకోండి"
+              : "Describe your village issue and generate a structured formal petition ready for submission"}
+          </p>
+        </div>
+      </div>
+
+      {/* Prominent Non-Submission Statutory Banner (Task 7) */}
+      <div className="statutory-notice-banner" role="note">
+        <span className="notice-icon" aria-hidden="true">ℹ️</span>
+        <div>
+          <strong>
+            {isTe
+              ? "ముఖ్య గమనిక: ఇది ఫిర్యాదు దరఖాస్తు ముసాయిదాను సిద్ధం చేసే సహాయక సాధనం మాత్రమే."
+              : "Important Notice: This tool assists in drafting formal petitions for your convenience."}
+          </strong>
+          <p>
+            {isTe
+              ? "ఈ సాధనం ద్వారా ఫిర్యాదు ప్రభుత్వ విభాగానికి నేరుగా సమర్పించబడదు. ఇక్కడ రూపొందించబడిన ముసాయిదాను కాపీ చేసుకుని ఆంధ్రప్రదేశ్ ప్రభుత్వ 'స్పందన (Spandana / 1902)' పోర్టల్ లేదా మీ గ్రామ/వార్డు సచివాలయంలో స్వయంగా సమర్పించాలి."
+              : "This tool does NOT submit petitions to government departments. Copy the generated draft and submit it via the official AP Spandana Portal (spandana.ap.gov.in / dial 1902) or submit a physical copy at your local Grama Sachivalayam."}
           </p>
         </div>
       </div>
@@ -125,7 +143,7 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
         <div className="form-grid">
           <div className="form-group">
             <label className="field-label" htmlFor="grievance-category">
-              {isTe ? "సమస్య విభాగం" : "Category"}
+              {isTe ? "సమస్య విభాగం:" : "Grievance Category:"}
             </label>
             <select
               id="grievance-category"
@@ -143,7 +161,7 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
 
           <div className="form-group">
             <label className="field-label" htmlFor="grievance-lang">
-              {isTe ? "ముసాయిదా భాష" : "Draft Language"}
+              {isTe ? "దరఖాస్తు ముసాయిదా భాష:" : "Petition Language:"}
             </label>
             <select
               id="grievance-lang"
@@ -151,14 +169,14 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
               value={draftLang}
               onChange={(e) => setDraftLang(e.target.value as "te" | "en")}
             >
-              <option value="te">తెలుగు (Telugu)</option>
+              <option value="te">తెలుగు (Telugu - Recommended for AP)</option>
               <option value="en">English</option>
             </select>
           </div>
 
           <div className="form-group">
             <label className="field-label" htmlFor="grievance-district">
-              {isTe ? "జిల్లా *" : "District *"}
+              {isTe ? "జిల్లా పేరు (తప్పనిసరి) *" : "District Name (Required) *"}
             </label>
             <input
               id="grievance-district"
@@ -166,14 +184,14 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
               className="form-input"
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
-              placeholder={isTe ? "ఉదా: కాకినాడ (తప్పనిసరి)" : "e.g. Kakinada (required)"}
+              placeholder={isTe ? "ఉదా: కాకినాడ, గుంటూరు..." : "e.g. Kakinada, Guntur..."}
               required
             />
           </div>
 
           <div className="form-group">
             <label className="field-label" htmlFor="grievance-mandal">
-              {isTe ? "మండలం / గ్రామం *" : "Mandal / Village *"}
+              {isTe ? "మండలం / గ్రామం (తప్పనిసరి) *" : "Mandal / Village (Required) *"}
             </label>
             <input
               id="grievance-mandal"
@@ -181,7 +199,7 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
               className="form-input"
               value={mandal}
               onChange={(e) => setMandal(e.target.value)}
-              placeholder={isTe ? "ఉదా: సామర్లకోట మండలం (తప్పనిసరి)" : "e.g. Samalkota Mandal (required)"}
+              placeholder={isTe ? "ఉదా: సామర్లకోట, తాడికొండ..." : "e.g. Samalkota, Tadikonda..."}
               required
             />
           </div>
@@ -189,7 +207,7 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
 
         <div className="form-group full-width">
           <label className="field-label" htmlFor="grievance-desc">
-            {isTe ? "సమస్య వివరణ *" : "Describe the Issue *"}
+            {isTe ? "సమస్య పూర్తి వివరణ *" : "Detailed Issue Description *"}
           </label>
           <textarea
             id="grievance-desc"
@@ -199,8 +217,8 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
             onChange={(e) => setDescription(e.target.value)}
             placeholder={
               isTe
-                ? "సమస్య ఏమిటి, ఎన్ని రోజుల నుండి ఉంది, ప్రభావిత ప్రాంతం వివరాలను రాయండి..."
-                : "Describe what the issue is, how long it has persisted, and affected areas..."
+                ? "గ్రామంలో సమస్య ఏమిటి, ఎన్ని రోజుల నుండి ఉంది, ఎంతమంది ప్రజలు ఇబ్బంది పడుతున్నారు, ఇప్పటివరకు ఎవరికైనా విన్నవించారా వంటి వివరాలను రాయండి..."
+                : "Describe what the issue is, how long it has persisted, which streets/localities are affected, and any previous representations made..."
             }
           />
         </div>
@@ -210,13 +228,11 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
           className="primary-button generate-draft-btn"
           disabled={!description.trim() || !district.trim() || !mandal.trim() || isLoading}
         >
-          {isLoading
-            ? isTe
-              ? "ముసాయిదాను సిద్ధం చేస్తోంది..."
-              : "Drafting Grievance..."
-            : isTe
-            ? "ముసాయిదా దరఖాస్తును రూపొందించండి"
-            : "Generate Grievance Draft"}
+          {isLoading ? (
+            <span>⏳ {isTe ? "అధికారిక ముసాయిదా సిద్ధం చేస్తోంది..." : "Drafting Official Petition..."}</span>
+          ) : (
+            <span>✍️ {isTe ? "ముసాయిదా దరఖాస్తును రూపొందించండి" : "Generate Official Petition Draft"}</span>
+          )}
         </button>
       </form>
 
@@ -224,36 +240,59 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
         <div className="notice-box error-notice" role="alert">
           <span className="notice-icon">⚠️</span>
           <div>
-            <strong>{isTe ? "గమనిక" : "Notice"}</strong>
+            <strong>{isTe ? "పరిశీలన గమనిక" : "Notice"}</strong>
             <p>{error}</p>
           </div>
         </div>
       )}
 
+      {/* Generated Grievance Draft Card */}
       {draftResult && (
         <div className="draft-output-card">
           <div className="draft-header-row">
-            <h4>{isTe ? "సిద్ధమైన ఫిర్యాదు ముసాయిదా" : "Generated Grievance Draft"}</h4>
-            <button className="copy-btn" onClick={handleCopy}>
-              {copied ? (isTe ? "కాపీ చేయబడింది! ✓" : "Copied! ✓") : isTe ? "📋 కాపీ చేయండి" : "📋 Copy Application"}
+            <div className="draft-badge-row">
+              <span className="draft-tag">
+                {isTe ? "సిద్ధమైన ముసాయిదా దరఖాస్తు" : "Formal Petition Draft"}
+              </span>
+              <span className="draft-lang-pill">
+                {draftLang === "te" ? "తెలుగు (Telugu)" : "English"}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className={`copy-btn ${copied ? "copied" : ""}`}
+              onClick={handleCopy}
+              aria-label={isTe ? "దరఖాస్తును కాపీ చేయండి" : "Copy full petition"}
+            >
+              {copied ? (
+                <span>✓ {isTe ? "కాపీ చేయబడింది!" : "Copied to Clipboard!"}</span>
+              ) : (
+                <span>📋 {isTe ? "దరఖాస్తు కాపీ చేయండి" : "Copy Petition"}</span>
+              )}
             </button>
           </div>
 
           <div className="draft-subject-box">
-            <span className="subject-label">{isTe ? "విషయం:" : "Subject:"}</span>
-            <strong>{draftResult.subject}</strong>
+            <span className="subject-label">{isTe ? "విషయం (Subject):" : "Subject:"}</span>
+            <strong className="subject-text">{draftResult.subject}</strong>
           </div>
 
           <div className="editable-body-box">
-            <label className="field-label" htmlFor="editable-body-area">
-              {isTe
-                ? "దరఖాస్తు పాఠ్యం (మీరు అవసరమైన మార్పులు చేసుకోవచ్చు):"
-                : "Application Body (You can edit details directly):"}
-            </label>
+            <div className="editable-label-row">
+              <label className="field-label" htmlFor="editable-body-area">
+                {isTe
+                  ? "దరఖాస్తు పాఠ్యం (అవసరమైతే ఇక్కడ నేరుగా మార్పులు చేయవచ్చు):"
+                  : "Petition Body (Editable text area):"}
+              </label>
+              <small className="edit-hint-text">
+                {isTe ? "మీ పేరు, ఫోన్ నంబరు జోడించవచ్చు" : "Add citizen name & contact details"}
+              </small>
+            </div>
             <textarea
               id="editable-body-area"
               className="form-textarea draft-body-area"
-              rows={8}
+              rows={9}
               value={editableBody}
               onChange={(e) => setEditableBody(e.target.value)}
             />
@@ -261,7 +300,7 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
 
           {draftResult.recommended_next_steps && draftResult.recommended_next_steps.length > 0 && (
             <div className="next-steps-section">
-              <h5>{isTe ? "తదుపరి సిఫార్సు చేయబడిన చర్యలు:" : "Recommended Next Steps:"}</h5>
+              <h5>📌 {isTe ? "తదుపరి సిఫార్సు చేయబడిన చర్యలు:" : "Recommended Submission Steps:"}</h5>
               <ol className="steps-list">
                 {draftResult.recommended_next_steps.map((step, idx) => (
                   <li key={idx}>{step}</li>
@@ -270,41 +309,33 @@ export default function GrievanceDrafting({ language }: GrievanceDraftingProps) 
             </div>
           )}
 
-          {draftResult.official_links && draftResult.official_links.length > 0 && (
-            <div className="official-links-section">
-              <h5>{isTe ? "అధికారిక సమర్పణ లింకులు:" : "Official Submission Links:"}</h5>
-              <div className="link-chips">
-                {draftResult.official_links.map((link, idx) => {
-                  const url = typeof link === "string" ? link : link.url;
-                  const label = typeof link === "string" ? link : (link.title || link.url);
-                  return (
-                    <a
-                      key={idx}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="portal-link-btn"
-                    >
-                      🔗 {label}
-                    </a>
-                  );
-                })}
-              </div>
+          {/* Submission Gateways and Portals */}
+          <div className="official-links-section">
+            <h5>🏛️ {isTe ? "అధికారిక సమర్పణ మార్గాలు & పోర్టల్‌లు:" : "Official Submission Portals & Contacts:"}</h5>
+            <div className="link-chips">
+              <a
+                href="https://spandana.ap.gov.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="portal-link-btn"
+              >
+                🌐 స్పందన (Spandana Portal) ↗
+              </a>
+              <a
+                href="tel:1902"
+                className="portal-link-btn helpline-link"
+              >
+                📞 1902 టోల్‌ఫ్రీ స్పందన కాల్ సెంటర్
+              </a>
+              <a
+                href="https://gramawardsachivalayam.ap.gov.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="portal-link-btn"
+              >
+                🏢 గ్రామ / వార్డు సచివాలయం పోర్టల్ ↗
+              </a>
             </div>
-          )}
-
-          <div className="drafting-disclaimer">
-            <span>⚠️</span>
-            <p>
-              <strong>
-                {isTe
-                  ? "ముఖ్య గమనిక: ఇది ఫిర్యాదు దరఖాస్తు ముసాయిదా మాత్రమే."
-                  : "Important Notice: This tool drafts petitions for your convenience."}
-              </strong>{" "}
-              {isTe
-                ? "ఇది ప్రభుత్వ విభాగానికి నేరుగా సమర్పించబడదు. దయచేసి దీన్ని స్పందన (Spandana) పోర్టల్ లేదా మీ గ్రామ సచివాలయంలో సమర్పించండి."
-                : "It does NOT submit petitions to government departments. Please submit your drafted complaint through the Spandana grievance portal or your local Grama Sachivalayam."}
-            </p>
           </div>
         </div>
       )}
