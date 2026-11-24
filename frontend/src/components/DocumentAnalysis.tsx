@@ -5,6 +5,7 @@ import { analyzeDocument, DocumentAnalysisResponse, ApiException } from "../serv
 
 interface DocumentAnalysisProps {
   language: string;
+  isOffline?: boolean;
 }
 
 const DOCUMENT_TYPES = [
@@ -15,7 +16,7 @@ const DOCUMENT_TYPES = [
   { id: "other", labelEn: "Other Government Welfare Document", labelTe: "ఇతర ప్రభుత్వ సంక్షేమ పత్రం" },
 ];
 
-export default function DocumentAnalysis({ language }: DocumentAnalysisProps) {
+export default function DocumentAnalysis({ language, isOffline }: DocumentAnalysisProps) {
   const isTe = language === "Telugu";
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState<string>("");
@@ -138,6 +139,24 @@ export default function DocumentAnalysis({ language }: DocumentAnalysisProps) {
           </p>
         </div>
       </div>
+
+      {isOffline && (
+        <div className="statutory-notice-banner warning-tint" role="status">
+          <span className="notice-icon">📡</span>
+          <div>
+            <strong>
+              {isTe
+                ? "నెట్‌వర్క్ అందుబాటులో లేదు (Offline Mode):"
+                : "Network Connection Unavailable (Offline Mode):"}
+            </strong>
+            <p>
+              {isTe
+                ? "పత్రాల OCR మరియు ఆటోమేటెడ్ విశ్లేషణ సర్వరుకు ఇంటర్నెట్ అవసరం. నెట్‌వర్క్ పునరుద్ధరించబడిన తర్వాత పత్రాలను అప్‌లోడ్ చేయవచ్చు."
+                : "Document OCR and automated extraction require an active server connection. You can review required checklist criteria offline."}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="upload-controls">
         <div className="doc-select-group">

@@ -5,6 +5,7 @@ import { getNearbyServices, GovernmentService, ApiException } from "../services/
 
 interface NearbyServicesProps {
   language: string;
+  isOffline?: boolean;
 }
 
 const SERVICE_TYPES = [
@@ -29,7 +30,7 @@ const VERIFIED_DISTRICTS = [
   { id: "Dr. B.R. Ambedkar Konaseema", labelEn: "Konaseema (Ramachandrapuram)", labelTe: "కోనసీమ (రామచంద్రపురం)" },
 ];
 
-export default function NearbyServices({ language }: NearbyServicesProps) {
+export default function NearbyServices({ language, isOffline }: NearbyServicesProps) {
   const isTe = language === "Telugu";
 
   const [serviceType, setServiceType] = useState<string>("");
@@ -146,6 +147,24 @@ export default function NearbyServices({ language }: NearbyServicesProps) {
           </p>
         </div>
       </div>
+
+      {isOffline && (
+        <div className="statutory-notice-banner warning-tint" role="status">
+          <span className="notice-icon">📡</span>
+          <div>
+            <strong>
+              {isTe
+                ? "నెట్‌వర్క్ అందుబాటులో లేదు (Offline Mode):"
+                : "Network Connection Unavailable (Offline Mode):"}
+            </strong>
+            <p>
+              {isTe
+                ? "సమీప ఆసుపత్రుల ప్రత్యక్ష శోధనకు నెట్‌వర్క్ అవసరం. అత్యవసర వైద్య సేవల కొరకు 108 (అంబులెన్స్) లేదా 104 (ఉచిత వైద్య సలహా) నంబర్లకు నేరుగా కాల్ చేయవచ్చు."
+                : "Live facility discovery requires active network connectivity. For immediate medical emergencies, dial 108 or 104 toll-free."}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="services-search-form">
         <div className="form-group">
