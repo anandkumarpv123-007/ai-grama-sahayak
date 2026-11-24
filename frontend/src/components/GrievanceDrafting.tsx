@@ -291,7 +291,13 @@ export default function GrievanceDrafting({ language, isOffline }: GrievanceDraf
           <div className="draft-header-row">
             <div className="draft-badge-row">
               <span className="draft-tag">
-                {isTe ? "సిద్ధమైన ముసాయిదా దరఖాస్తు" : "Formal Petition Draft"}
+                {isOffline
+                  ? isTe
+                    ? "📄 స్థానిక ముసాయిదా నమూనా (ఆఫ్‌లైన్ టెంప్లేట్)"
+                    : "📄 Local Petition Template (Offline Draft)"
+                  : isTe
+                  ? "సిద్ధమైన ముసాయిదా దరఖాస్తు"
+                  : "Formal Petition Draft"}
               </span>
               <span className="draft-lang-pill">
                 {draftLang === "te" ? "తెలుగు (Telugu)" : "English"}
@@ -310,6 +316,19 @@ export default function GrievanceDrafting({ language, isOffline }: GrievanceDraf
                 <span>📋 {isTe ? "దరఖాస్తు కాపీ చేయండి" : "Copy Petition"}</span>
               )}
             </button>
+          </div>
+
+          {/* Privacy & Template Transparency Notice */}
+          <div className="notice-box" style={{ background: "var(--ivory)", borderColor: "var(--border-light)", margin: "0.5rem 0" }}>
+            <span className="notice-icon">ℹ️</span>
+            <div>
+              <strong>{isTe ? "ముసాయిదా నమూనా స్పష్టత & గోప్యత:" : "Template Notice & Privacy:"}</strong>
+              <p style={{ margin: "2px 0 0 0", fontSize: "0.85rem" }}>
+                {isTe
+                  ? "ఇది పౌరుల ఉపయోగం కొరకు సిద్ధం చేసిన ప్రాథమిక దరఖాస్తు నమూనా మాత్రమే; ఇది ఏ ప్రభుత్వ పోర్టల్‌కు నేరుగా సమర్పించబడదు. ఈ ఫిర్యాదు వివరాలు బ్రౌజర్‌లో ఎక్కడా నిల్వ చేయబడవు."
+                  : "This is an informational application template for citizen reference only; it is NOT an official submission. Your grievance text is kept strictly in memory and is never persisted."}
+              </p>
+            </div>
           </div>
 
           <div className="draft-subject-box">

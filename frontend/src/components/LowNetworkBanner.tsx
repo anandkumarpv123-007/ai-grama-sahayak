@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { ConnectivityState, probeBackendHealth } from "../services/connectivity";
 import { OFFLINE_PUBLIC_KNOWLEDGE, OfflineSchemeInfo } from "../services/offlineKnowledge";
-import { SavedQuestion, deleteSavedQuestion, clearAllSavedData } from "../services/savedQuestions";
+import {
+  SavedQuestion,
+  deleteSavedQuestion,
+  clearAllSavedData,
+  PREDEFINED_PUBLIC_QUESTIONS,
+} from "../services/savedQuestions";
 
 interface LowNetworkBannerProps {
   language: string;
@@ -49,7 +54,7 @@ export default function LowNetworkBanner({
 
   return (
     <>
-      {/* Compact Header Connectivity Indicator (Task 1) */}
+      {/* Compact Header Connectivity Indicator */}
       <div className="connectivity-wrapper">
         <button
           type="button"
@@ -86,8 +91,8 @@ export default function LowNetworkBanner({
                   : isTe ? "సర్వరుతో అనుసంధానం కాలేదు: " : "Backend Server Unreachable: "}
               </strong>
               {isTe
-                ? "ఆఫ్‌లైన్ ప్రభుత్వ సమాచారాన్ని చూడవచ్చు లేదా మీ ప్రశ్నను తర్వాత అడగడానికి సేవ్ చేయవచ్చు."
-                : "You can view cached public welfare rules or save questions to send upon reconnection."}
+                ? "ధృవీకరించబడిన ఆఫ్‌లైన్ ప్రభుత్వ మార్గదర్శకాలను చూడవచ్చు లేదా ప్రశ్నలను తర్వాత అడగడానికి సేవ్ చేసుకోవచ్చు."
+                : "You can view verified cached public welfare rules or save questions to send upon reconnection."}
             </p>
           </div>
           <button
@@ -158,7 +163,7 @@ export default function LowNetworkBanner({
               </button>
             </div>
 
-            {/* Pending Saved Questions (Task 3 & Task 5) */}
+            {/* Pending Saved Questions */}
             <div className="saved-questions-section">
               <div className="section-title-bar">
                 <h4>
@@ -170,7 +175,7 @@ export default function LowNetworkBanner({
                     type="button"
                     className="clear-all-btn"
                     onClick={handleClearAll}
-                    title={isTe ? "సేవ్ చేసిన అన్ని ప్రశ్నలను తొలగించండి" : "Delete all saved questions"}
+                    title={isTe ? "ఈ బ్రౌజర్‌లోని ముసాయిదా ప్రశ్నలను తొలగించండి" : "Clear local question drafts from this browser"}
                   >
                     🗑️ {isTe ? "అన్నీ క్లియర్ చేయండి" : "Clear All"}
                   </button>
@@ -179,7 +184,9 @@ export default function LowNetworkBanner({
 
               {clearedNotice && (
                 <p className="cleared-toast" role="status">
-                  ✓ {isTe ? "సేవ్ చేసిన ప్రశ్నలు తొలగించబడ్డాయి." : "All saved questions cleared."}
+                  ✓ {isTe
+                    ? "ఈ బ్రౌజర్‌లో సేవ్ చేసిన ముసాయిదా ప్రశ్నలు తొలగించబడ్డాయి (అధికారిక రికార్డులకు ఎటువంటి మార్పు ఉండదు)."
+                    : "Local question drafts cleared from this browser (official records remain unaffected)."}
                 </p>
               )}
 
@@ -187,8 +194,8 @@ export default function LowNetworkBanner({
                 <div className="empty-saved-box">
                   <p>
                     {isTe
-                      ? "ప్రస్తుతం సేవ్ చేసిన ప్రశ్నలు లేవు. నెట్‌వర్క్ లేనప్పుడు మీ ప్రశ్నను చాట్ బాక్స్ ద్వారా సేవ్ చేసుకోవచ్చు."
-                      : "No pending saved questions. When offline, you can save queries from the chat box to submit once connected."}
+                      ? "ప్రస్తుతం సేవ్ చేసిన ప్రశ్నలు లేవు. నెట్‌వర్క్ లేనప్పుడు లేదా తర్వాత అడగడానికి మీ ప్రశ్నను చాట్ బాక్స్ ద్వారా సేవ్ చేసుకోవచ్చు."
+                      : "No pending saved questions. When offline, you can save non-sensitive queries to submit once reconnected."}
                   </p>
                 </div>
               ) : (
@@ -240,7 +247,30 @@ export default function LowNetworkBanner({
               )}
             </div>
 
-            {/* Offline Public Information Directory (Task 2) */}
+            {/* Predefined Non-Sensitive Public Questions (Directive 2) */}
+            <div className="predefined-questions-section">
+              <h5>
+                💡 {isTe ? "ధృవీకరించబడిన ప్రజా ప్రశ్నలు (గోప్యతా-సురక్షితమైనవి):" : "Predefined Public Questions (Privacy-Safe):"}
+              </h5>
+              <div className="predefined-q-list">
+                {PREDEFINED_PUBLIC_QUESTIONS.map((pq, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className="predefined-q-btn"
+                    onClick={() => {
+                      onSubmitSavedQuestion(isTe ? pq.titleTe : pq.titleEn, pq.category);
+                      setIsOpen(false);
+                    }}
+                  >
+                    <span>💬 {isTe ? pq.titleTe : pq.titleEn}</span>
+                    <span className="predefined-q-arrow">→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Offline Public Information Directory */}
             <div className="offline-directory-section">
               <h4>
                 🏛️ {isTe ? "ఆఫ్‌లైన్ ప్రభుత్వ సమాచార నిల్వ (Verified Public Cache):" : "Cached Public Welfare Knowledge:"}
@@ -275,7 +305,9 @@ export default function LowNetworkBanner({
                       📦 {isTe ? "ఆఫ్‌లైన్ నిల్వ సమాచారం" : "Cached Public Information"}
                     </span>
                     <span className="cache-timestamp">
-                      🕒 {isTe ? `నిల్వ తేదీ: ${selectedScheme.lastUpdated}` : `Cached: ${selectedScheme.lastUpdated}`}
+                      🕒 {isTe
+                        ? `ధృవీకరణ: ${selectedScheme.verifiedDate} | నిల్వ: ${selectedScheme.cachedAt}`
+                        : `Verified: ${selectedScheme.verifiedDate} | Cached: ${selectedScheme.cachedAt}`}
                     </span>
                   </div>
 
@@ -336,15 +368,22 @@ export default function LowNetworkBanner({
               )}
             </div>
 
-            {/* Privacy Guarantee & Clear Action (Task 5) */}
+            {/* Privacy Guidance & Warning Box */}
             <div className="privacy-guarantee-box">
               <span>🔒</span>
-              <p>
-                <strong>{isTe ? "గోప్యతా హామీ: " : "Privacy Guarantee: "}</strong>
-                {isTe
-                  ? "ఆధార్ నంబర్లు, పత్రాలు, బ్యాంకింగ్ వివరాలు లేదా వ్యక్తిగత సమాచారం ఆఫ్‌లైన్‌లో ఎప్పటికీ నిల్వ చేయబడవు."
-                  : "Aadhaar numbers, certificates, banking details and personal eligibility profiles are NEVER stored offline."}
-              </p>
+              <div>
+                <p>
+                  <strong>{isTe ? "గోప్యతా మార్గదర్శకం & పౌరుల హెచ్చరిక: " : "Privacy Guidance & Citizen Warning: "}</strong>
+                  {isTe
+                    ? "ఆధార్ నంబర్లు, బ్యాంక్ ఖాతాలు, ఫోన్ నంబర్లు, ఓటీపీలు లేదా వ్యక్తిగత సమాచారాన్ని ఎప్పుడూ సేవ్ చేయవద్దు. ఆటోమేటిక్ ప్యాటర్న్ డిటెక్షన్ ప్రాథమిక రక్షణ మాత్రమే; పూర్తి గోప్యతకు పౌరులు వ్యక్తిగత వివరాలను నమోదు చేయరాదు."
+                    : "Never save Aadhaar numbers, bank accounts, phone numbers, OTPs, or confidential personal data. Pattern detection is a preliminary filter and does not guarantee total privacy."}
+                </p>
+                <small style={{ display: "block", marginTop: "4px", color: "var(--forest-green-dark)" }}>
+                  {isTe
+                    ? "✓ సేవ్ చేసిన ప్రశ్నలు మీ అనుమతి లేకుండా లేదా ఆటోమేటిక్‌గా ఎప్పటికీ పంపబడవు; మీరు 'సమర్పించండి' నొక్కినప్పుడు మాత్రమే మాన్యువల్‌గా పంపబడతాయి."
+                    : "✓ Saved questions are never automatically transmitted without your explicit click on 'Submit Now'."}
+                </small>
+              </div>
             </div>
           </div>
         </div>
