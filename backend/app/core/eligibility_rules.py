@@ -411,7 +411,7 @@ def _eval_pm_kisan(
             )
         else:
             reasons.append(
-                "Applicant family owns cultivable land and is verified clear of all official exclusion categories."
+                "Applicant family owns cultivable land and is verified clear of statutory exclusions under official PM-KISAN guidelines."
             )
 
     return is_eligible, reasons
@@ -440,8 +440,26 @@ def _eval_pm_kisan(
 def _eval_ntr_bharosa_oap(
     profile: Dict[str, Any],
     language: LanguageCode,
-) -> Tuple[bool, List[str]]:
+) -> Tuple[Optional[bool], List[str]]:
     reasons: List[str] = []
+
+    category = str(profile.get("pension_category", "")).strip().lower()
+    if category and category not in ["oap", "old_age", "old age", "old age pension", "వృద్ధాప్య"]:
+        if language == LanguageCode.TE:
+            reason = (
+                "ఈ నిబంధనల ఇంజిన్ ప్రస్తుతం వృద్ధాప్య పింఛను (OAP) మాత్రమే మూల్యాంకనం చేస్తుంది. "
+                "ఇతర కేటగిరీలు (వితంతు పింఛనుకు మరణ ధృవీకరణ పత్రాలు, దివ్యాంగులకు సదరం/వైద్య ధృవీకరణలు మొదలైనవి) "
+                "మరియు సంబంధిత ప్రభుత్వ ఉత్తర్వులపై ఆధారపడి ఉంటాయి. దయచేసి స్థానిక గ్రామ/వార్డు సచివాలయాన్ని సంప్రదించండి."
+            )
+        else:
+            reason = (
+                f"The deterministic eligibility engine currently evaluates Old Age Pension (OAP) only. "
+                f"Eligibility for requested category '{category}' depends on category-specific documentation "
+                f"(such as civil records for widow pensions, medical/disability certifications for PwD, or departmental guidelines) "
+                f"and active government orders that cannot be certified deterministically. "
+                f"Please consult your local Grama / Ward Sachivalayam."
+            )
+        return None, [reason]
 
     state = str(profile.get("state", "")).strip().lower()
     if state not in ["andhra pradesh", "ap"]:
@@ -545,9 +563,15 @@ def _eval_ntr_bharosa_oap(
     is_eligible = len(reasons) == 0
     if is_eligible:
         if language == LanguageCode.TE:
-            reasons.append("దరఖాస్తుదారు ఎన్టీఆర్ భరోసా వృద్ధాప్య పింఛను అర్హత ప్రమాణాలు అన్నింటినీ పొందారు.")
+            reasons.append(
+                "దరఖాస్తుదారు వృద్ధాప్య పింఛను (OAP) ప్రాథమిక వయస్సు (60+) మరియు సామాజిక-ఆర్థిక నిబంధనలను సంతృప్తిపరిచారు; "
+                "తుది మంజూరు క్షేత్రస్థాయి విచారణ మరియు అధికారిక ఉత్తర్వులపై ఆధారపడి ఉంటుంది."
+            )
         else:
-            reasons.append("Applicant meets all verified criteria for NTR Bharosa Old Age Pension.")
+            reasons.append(
+                "Applicant satisfies basic documented age (60+) and socio-economic criteria for Old Age Pension (OAP); "
+                "final sanction depends on field verification and official orders."
+            )
 
     return is_eligible, reasons
 
@@ -628,9 +652,15 @@ def _eval_vaidya_seva(
     is_eligible = len(reasons) == 0
     if is_eligible:
         if language == LanguageCode.TE:
-            reasons.append("దరఖాస్తుదారు డా. ఎన్టీఆర్ వైద్య సేవ / ఆరోగ్యశ్రీ ఉచిత చికిత్స ప్రమాణాలకు అర్హులు.")
+            reasons.append(
+                "దరఖాస్తుదారు డా. ఎన్టీఆర్ వైద్య సేవ నివాస మరియు పేదరిక నిబంధనలను సంతృప్తిపరిచారు; "
+                "ఉచిత చికిత్స నెట్‌వర్క్ ఆసుపత్రులు, ప్రొసీజర్ మాస్టర్ మరియు ప్రీ-ఆథరైజేషన్ అనుమతులకు లోబడి ఉంటుంది."
+            )
         else:
-            reasons.append("Applicant meets residency and health scheme criteria for Dr. NTR Vaidya Seva / Aarogyasri.")
+            reasons.append(
+                "Applicant satisfies documented residency and poverty criteria for Dr. NTR Vaidya Seva; "
+                "treatment coverage remains subject to empaneled hospital guidelines, procedure master listing, and pre-authorization."
+            )
 
     return is_eligible, reasons
 
@@ -743,8 +773,8 @@ SCHEME_REGISTRY: Dict[str, SchemeRuleDefinition] = {
     # 3. NTR Bharosa Social Security Pension (Andhra Pradesh)
     "ntr_bharosa_pension": SchemeRuleDefinition(
         scheme_id="ntr_bharosa_pension",
-        name_en="NTR Bharosa Social Security Pension (Old Age Pension)",
-        name_te="ఎన్టీఆర్ భరోసా సామాజిక భద్రతా పింఛను (వృద్ధాప్య పింఛను)",
+        name_en="NTR Bharosa Social Security Pension (Old Age Pension Only)",
+        name_te="ఎన్టీఆర్ భరోసా సామాజిక భద్రతా పింఛను (వృద్ధాప్య పింఛను మాత్రమే)",
         required_fields=[
             "state",
             "age",
@@ -783,9 +813,9 @@ SCHEME_REGISTRY: Dict[str, SchemeRuleDefinition] = {
         ],
         sources=[
             Source(
-                title="G.O.Ms.No.39 (PR&RD Dept) — Social Security Pensions Guidelines",
-                url="https://sspensions.ap.gov.in/SSP/Reports/GOMsNo39.pdf",
-                publisher="Panchayat Raj & Rural Development Department, Government of Andhra Pradesh",
+                title="SERP Social Security Pensions Portal",
+                url="https://sspensions.ap.gov.in",
+                publisher="Society for Elimination of Rural Poverty (SERP), PR & RD Department, Government of Andhra Pradesh",
                 verified_at="2026-11-22",
             )
         ],
@@ -802,11 +832,11 @@ SCHEME_REGISTRY: Dict[str, SchemeRuleDefinition] = {
         ],
         evaluator_fn=_eval_vaidya_seva,
         benefits_en=[
-            "Cashless medical treatment up to Rs. 25,00,000 per family per year across listed secondary and tertiary procedures.",
+            "Cashless medical treatment up to Rs. 25,00,000 per family per year across listed secondary and tertiary procedures in empaneled network hospitals with prior authorization.",
             "Coverage across empanelled government and private network hospitals.",
         ],
         benefits_te=[
-            "గుర్తింపు పొందిన నెట్‌వర్క్ ఆసుపత్రుల్లో కుటుంబానికి ఏడాదికి రూ. 25,00,000 వరకు ఉచిత నగదు రహిత వైద్య చికిత్స.",
+            "గుర్తింపు పొందిన నెట్‌వర్క్ ఆసుపత్రుల్లో కుటుంబానికి ఏడాదికి రూ. 25,00,000 వరకు ఉచిత నగదు రహిత వైద్య చికిత్స (ప్రీ-ఆథరైజేషన్ నిబంధనలకు లోబడి).",
             "ప్రభుత్వ మరియు ప్రైవేట్ నెట్‌వర్క్ ఆసుపత్రులలో సేవలు.",
         ],
         documents_en=[
@@ -831,11 +861,17 @@ SCHEME_REGISTRY: Dict[str, SchemeRuleDefinition] = {
         ],
         sources=[
             Source(
-                title="Dr. NTR Vaidya Seva Scheme Guidelines & Procedure Matrix",
+                title="Dr. NTR Vaidya Seva Trust Portal",
+                url="https://drntrvaidyaseva.ap.gov.in",
+                publisher="Dr. NTR Vaidya Seva Trust, Health, Medical & Family Welfare Department, Government of Andhra Pradesh",
+                verified_at="2026-11-22",
+            ),
+            Source(
+                title="Dr. NTR Vaidya Seva / Aarogyasri Trust Portal",
                 url="https://aarogyasri.ap.gov.in/web/guest/about-scheme",
                 publisher="Dr. NTR Vaidya Seva Trust, Health Dept, Government of Andhra Pradesh",
                 verified_at="2026-11-22",
-            )
+            ),
         ],
     ),
 }
@@ -1060,7 +1096,13 @@ def evaluate_scheme_eligibility(
     # 6. Deterministic evaluation against documented rules
     is_eligible, reasons = scheme.evaluator_fn(applicant_profile, language)
 
-    status = EligibilityStatus.ELIGIBLE if is_eligible else EligibilityStatus.INELIGIBLE
+    if is_eligible is None:
+        status = EligibilityStatus.UNABLE_TO_VERIFY
+    elif is_eligible:
+        status = EligibilityStatus.ELIGIBLE
+    else:
+        status = EligibilityStatus.INELIGIBLE
+
     benefits = scheme.benefits_te if language == LanguageCode.TE else scheme.benefits_en
     documents = scheme.documents_te if language == LanguageCode.TE else scheme.documents_en
     steps = scheme.steps_te if language == LanguageCode.TE else scheme.steps_en

@@ -946,3 +946,102 @@ def test_eligibility_telugu_validation_messages():
     assert data["status"] == "needs_more_information"
     assert "age" in data["missing_fields"]
     assert any("పూర్ణాంకమై" in r or "రుణాత్మకం" in r for r in data["reasons"])
+
+
+def test_ntr_bharosa_non_oap_category_unable_to_verify():
+    """
+    Policy Uncertainty Safety (Phase 5C.3.1):
+    Evaluating non-OAP pension categories (e.g. disability) where policy is materially uncertain
+    must return unable_to_verify rather than forcing an inaccurate OAP decision.
+    """
+    payload = {
+        "scheme_id": "ntr_bharosa_pension",
+        "language": "en",
+        "applicant_profile": {
+            "state": "Andhra Pradesh",
+            "age": 35,
+            "pension_category": "disability",
+            "has_white_ration_or_rice_card": True,
+            "is_govt_employee_or_pensioner": False,
+            "is_income_tax_payer": False,
+            "owns_four_wheeler": False,
+        },
+    }
+    response = client.post("/api/eligibility/check", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "unable_to_verify"
+    assert any("Old Age Pension (OAP) only" in r for r in data["reasons"])
+
+
+def test_ntr_bharosa_non_oap_category_unable_to_verify_telugu():
+    """
+    Policy Uncertainty Safety (Telugu):
+    Evaluating non-OAP pension categories in Telugu must return unable_to_verify.
+    """
+    payload = {
+        "scheme_id": "ntr_bharosa_pension",
+        "language": "te",
+        "applicant_profile": {
+            "state": "Andhra Pradesh",
+            "age": 35,
+            "pension_category": "దివ్యాంగులు",
+            "has_white_ration_or_rice_card": True,
+            "is_govt_employee_or_pensioner": False,
+            "is_income_tax_payer": False,
+            "owns_four_wheeler": False,
+        },
+    }
+    response = client.post("/api/eligibility/check", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "unable_to_verify"
+    assert any("వృద్ధాప్య పింఛను (OAP) మాత్రమే" in r for r in data["reasons"])
+
+
+def test_ntr_bharosa_widow_category_unable_to_verify():
+    """
+    Policy Uncertainty Safety (Widow Category):
+    Evaluating widow category where deterministic rules are restricted to OAP
+    must return unable_to_verify and reference category-specific documentation
+    without erroneously demanding medical board certifications for widows.
+    """
+    payload = {
+        "scheme_id": "ntr_bharosa_pension",
+        "language": "en",
+        "applicant_profile": {
+            "state": "Andhra Pradesh",
+            "age": 42,
+            "pension_category": "widow",
+            "has_white_ration_or_rice_card": True,
+            "is_govt_employee_or_pensioner": False,
+            "is_income_tax_payer": False,
+            "owns_four_wheeler": False,
+        },
+    }
+    response = client.post("/api/eligibility/check", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "unable_to_verify"
+    assert any("Old Age Pension (OAP) only" in r for r in data["reasons"])
+    assert any("widow pensions" in r for r in data["reasons"])
+
+
+def test_generic_non_transition_scheme_unable_to_verify():
+    """
+    Factual Uncertainty Safety:
+    Evaluating an undocumented or unregistered scheme must return unable_to_verify.
+    """
+    payload = {
+        "scheme_id": "pm_crop_insurance",
+        "language": "en",
+        "applicant_profile": {
+            "state": "Andhra Pradesh",
+            "occupation": "farmer",
+        },
+    }
+    response = client.post("/api/eligibility/check", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "unable_to_verify"
+    assert any("currently unavailable" in r for r in data["reasons"])

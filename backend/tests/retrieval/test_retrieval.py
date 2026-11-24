@@ -148,7 +148,8 @@ def test_format_evidence_text_helper():
 def test_telugu_annadata_assistance_amount_ranking():
     """
     Regression Test: Telugu Annadata assistance query must rank chunk c1
-    (Financial Assistance & Payment Breakdown) at Rank 1 with prominent Rs. 20,000 evidence.
+    (Financial Assistance Framework) at Rank 1 with verified PM-KISAN assistance
+    and conditional state top-up guidance, without removed unsupported combined figures.
     """
     query = "అన్నదాత సుఖీభవ పథకం కింద రైతులకు ఎంత ఆర్థిక సహాయం అందుతుంది?"
     results = retrieve_context(
@@ -161,7 +162,9 @@ def test_telugu_annadata_assistance_amount_ranking():
     top_chunk = results[0]
     assert top_chunk["metadata"]["chunk_id"] == "agri_annadata_sukhibhava_pmkisan_c1"
     assert "Financial Assistance" in top_chunk["metadata"]["section_title"]
-    assert "20,000" in top_chunk["text"]
+    assert "6,000" in top_chunk["text"]
+    assert "PM-KISAN" in top_chunk["text"]
+    assert "20,000" not in top_chunk["text"]
     assert "Rs." in top_chunk["text"]
     # Verify citations helper works and points to verified agriculture portal
     citations = get_citations(results)
@@ -171,7 +174,8 @@ def test_telugu_annadata_assistance_amount_ranking():
 
 def test_english_annadata_assistance_amount_ranking():
     """
-    Regression Test: English Annadata assistance query must rank chunk c1 at Rank 1.
+    Regression Test: English Annadata assistance query must rank chunk c1 at Rank 1
+    with verified PM-KISAN and conditional state top-up assistance, without removed figures.
     """
     query = "What is the annual financial assistance for farmers under Annadata Sukhibhava?"
     results = retrieve_context(
@@ -183,7 +187,10 @@ def test_english_annadata_assistance_amount_ranking():
     assert len(results) > 0
     top_chunk = results[0]
     assert top_chunk["metadata"]["chunk_id"] == "agri_annadata_sukhibhava_pmkisan_c1"
-    assert "20,000" in top_chunk["text"]
+    assert "Financial Assistance" in top_chunk["metadata"]["section_title"]
+    assert "6,000" in top_chunk["text"]
+    assert "state top-up" in top_chunk["text"].lower() or "top-up" in top_chunk["text"].lower()
+    assert "20,000" not in top_chunk["text"]
 
 
 def test_telugu_and_english_eligibility_ranking():
@@ -247,7 +254,8 @@ def test_telugu_and_english_documents_ranking():
 
 def test_telugu_and_english_pension_amount_ranking():
     """
-    Regression Test: Pension payout queries in Telugu and English must rank monthly payout chunks at Rank 1.
+    Regression Test: Pension payout queries in Telugu and English must rank monthly payout chunks at Rank 1,
+    verifying benchmarked OAP rates and SADAREM/medical guidance without removed unsupported figures.
     """
     # Telugu Pension Amount Query
     te_query = "ఎన్టీఆర్ భరోసా వృద్ధాప్య పింఛను మరియు దివ్యాంగుల పెన్షన్ ఎంత?"
@@ -261,7 +269,9 @@ def test_telugu_and_english_pension_amount_ranking():
     assert te_results[0]["metadata"]["chunk_id"] == "schemes_ntr_bharosa_pension_c1"
     assert "Payout Rates" in te_results[0]["metadata"]["section_title"]
     assert "4,000" in te_results[0]["text"]
-    assert "6,000" in te_results[0]["text"]
+    assert "SADAREM" in te_results[0]["text"]
+    assert "6,000" not in te_results[0]["text"]
+    assert "10,000" not in te_results[0]["text"]
 
     # English Pension Amount Query
     en_query = "What is the monthly pension amount under NTR Bharosa for old age and disabled?"
@@ -274,3 +284,6 @@ def test_telugu_and_english_pension_amount_ranking():
     assert len(en_results) > 0
     assert en_results[0]["metadata"]["chunk_id"] == "schemes_ntr_bharosa_pension_c1"
     assert "4,000" in en_results[0]["text"]
+    assert "SADAREM" in en_results[0]["text"]
+    assert "6,000" not in en_results[0]["text"]
+    assert "10,000" not in en_results[0]["text"]

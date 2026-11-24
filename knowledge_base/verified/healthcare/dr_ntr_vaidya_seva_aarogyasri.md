@@ -1,6 +1,6 @@
 ---
 id: health_dr_ntr_vaidya_seva_aarogyasri
-title: "Dr. NTR Vaidya Seva Scheme (Aarogyasri) Guidelines and Empaneled Treatments"
+title: "Dr. NTR Vaidya Seva Scheme (Aarogyasri) Guidelines and Covered Treatments"
 domain: healthcare
 language: bilingual
 state: "Andhra Pradesh"
@@ -9,38 +9,35 @@ publisher: "Dr. NTR Vaidya Seva Trust, Health Medical & Family Welfare Departmen
 url: "https://drntrvaidyaseva.ap.gov.in"
 verified_at: "2026-11-21"
 status: transitioning
-scheme_category: "Universal Health Protection and Cashless Hospitalization"
+scheme_category: "Cashless Health Insurance and Tertiary Healthcare"
 ---
 
-# Dr. NTR Vaidya Seva Scheme / Aarogyasri (డా. ఎన్టీఆర్ వైద్య సేవ పథకం / ఆరోగ్యశ్రీ)
+# Dr. NTR Vaidya Seva / Aarogyasri Scheme (డాక్టర్ ఎన్టీఆర్ వైద్య సేవ / ఆరోగ్యశ్రీ పథకం)
 
-## 1. Overview and Core Purpose (పథకం ముఖ్య ఉద్దేశం)
-Dr. NTR Vaidya Seva (historically known as Aarogyasri and Dr. YSR Aarogyasri) is the flagship cashless health insurance scheme implemented by the Government of Andhra Pradesh through the Dr. NTR Vaidya Seva Trust. It protects poor and middle-class families from catastrophic health expenditures by providing end-to-end cashless treatment for serious illnesses in empaneled network hospitals.
-డా. ఎన్టీఆర్ వైద్య సేవ పథకం (గతంలో ఆరోగ్యశ్రీ) ఆంధ్రప్రదేశ్ ప్రభుత్వంచే డా. ఎన్టీఆర్ వైద్య సేవ ట్రస్ట్ ద్వారా అమలు చేయబడుతున్న సమగ్ర ఉచిత నగదు రహిత ఆరోగ్య బీమా పథకం. పేద మరియు మధ్యతరగతి కుటుంబాలకు తీవ్రమైన రోగాలు వచ్చినప్పుడు ఆసుపత్రి ఖర్చుల భారం లేకుండా నెట్‌వర్క్ ఆసుపత్రులలో ఉచితంగా సూపర్ స్పెషాలిటీ చికిత్సలు అందించడం దీని లక్ష్యం.
+## 1. Overview and Core Mandate (పథక సమాచారం మరియు లక్ష్యం)
+Dr. NTR Vaidya Seva (formerly functioning as Dr. YSR Aarogyasri) is the flagship healthcare scheme of the Government of Andhra Pradesh. The scheme provides cashless medical and surgical treatment for listed secondary and tertiary illnesses to low- and middle-income families holding valid BPL Rice Cards or meeting state income ceiling criteria.
+డాక్టర్ ఎన్టీఆర్ వైద్య సేవ (గతంలో డాక్టర్ వైఎస్సార్ ఆరోగ్యశ్రీ) ఆంధ్రప్రదేశ్ ప్రభుత్వం అమలు చేస్తున్న ప్రధాన ఆరోగ్య పథకం. దారిద్ర్య రేఖకు దిగువన ఉన్న పేద మరియు మధ్యతరగతి కుటుంబాలకు నిర్దేశిత తీవ్ర అనారోగ్యాలు మరియు శస్త్రచికిత్సలకు నగదు రహిత వైద్య సహాయం అందించడం ఈ పథకం ముఖ్య ఉద్దేశం.
 
-## 2. Key Scheme Benefits & Coverage Limit (ప్రయోజనాలు మరియు బీమా పరిమితి)
-* **Coverage Limit:** Up to **Rs. 25 Lakh per family per year** on a family floater basis for covered procedures.
-* **Procedures Covered:** Over **3,257 medical and surgical procedures** across 31 super-specialty disciplines, including oncology (cancer care), cardiology (heart surgery/stents), nephrology (dialysis, kidney transplants), neurology, polytrauma, and pediatric surgery.
-* **Completely Cashless:** Covers consultation, diagnostic tests, surgery, ICU care, medicines, nursing, food during inpatient stay, and post-discharge medicines for up to 10-30 days.
-* **Aarogya Asara (Post-operative financial support):** Daily wage-loss allowance of Rs. 225/day (up to Rs. 5,000/month) credited to the patient's bank account during doctor-prescribed rest and recuperation period.
-* ప్రతి కుటుంబానికి ఏడాదికి గరిష్టంగా రూ. 25 లక్షల వరకు నగదు రహిత వైద్య చికిత్స అందుతుంది. ఇందులో క్యాన్సర్, గుండె జబ్బులు, కిడ్నీ సమస్యలు, న్యూరో సర్జరీలతో సహా 3,257 కి పైగా శస్త్రచికిత్సలు మరియు చికిత్సా విధానాలు కవర్ అవుతాయి. ఆసుపత్రిలో చేరినప్పటి నుండి మందులు, పరీక్షలు, భోజనం మరియు డిశ్చార్జి తర్వాత మందులు పూర్తిగా ఉచితం. రోగి విశ్రాంతి సమయంలో ఆరోగ్య ఆసరా కింద రోజుకు రూ. 225 చొప్పున ఆర్థిక సహాయం లభిస్తుంది.
+## 2. Coverage Scope and Treatment Preconditions (చికిత్స నిబంధనలు మరియు పరిమితులు)
+* **Preconditions for Cashless Treatment (నగదు రహిత చికిత్స నిబంధనలు):** Cashless treatment is subject to specific administrative and clinical requirements:
+  * Treatment must be received at an **empaneled government or private network hospital**.
+  * The medical/surgical procedure must be explicitly listed in the official **Vaidya Seva Procedure Master**.
+  * **Prior authorization (pre-authorization)** must be approved by the Dr. NTR Vaidya Seva Trust through the hospital's Aarogyamithra desk prior to planned inpatient admission.
+  * **Emergency Treatment Safeguard (అత్యవసర చికిత్స రక్షణ):** In life-threatening emergencies, immediate medical stabilization and urgent treatment must be prioritized; network hospitals and Aarogyamithras initiate emergency pre-authorization protocols without delaying essential care.
+* **Coverage Scope (కవరేజ్ పరిధి):** Up to Rs. 25,00,000 per family per year for listed secondary and tertiary procedures in empaneled network hospitals as governed by Trust guidelines and package tariffs.
+* **Portability Boundary (రాష్ట్ర పరిధి వెలుపల సేవలు):** Treatment outside Andhra Pradesh is strictly restricted to **participating empaneled network hospitals outside the state as notified by the Trust** for approved super-specialty procedures. Coverage is not applicable at arbitrary or non-network hospitals across India.
+* **తెలుగు వివరణ:** అర్హులైన కుటుంబాలకు గుర్తింపు పొందిన నెట్‌వర్క్ ఆసుపత్రులలో ప్రభుత్వం నోటిఫై చేసిన ప్రొసీజర్ మాస్టర్ పరిధిలోని వ్యాధులకు నిర్ణీత ప్యాకేజీల ప్రకారం నగదు రహిత చికిత్స లభిస్తుంది. ముందస్తు ప్రణాళికాబద్ధ చికిత్సలకు ఆరోగ్యమిత్ర ద్వారా ట్రస్ట్ నుండి ప్రీ-ఆథరైజేషన్ (ముందస్తు అనుమతి) పొందడం తప్పనిసరి. అయితే అత్యవసర ప్రాణాపాయ పరిస్థితుల్లో తక్షణ ప్రాథమిక చికిత్సను నిలిపివేయరాదు, ఆసుపత్రి సిబ్బంది అత్యవసర అనుమతి ప్రక్రియను సమాంతరంగా చేపడతారు. రాష్ట్రం వెలుపల చికిత్స కేవలం ట్రస్ట్ ఆమోదించిన ఇతర రాష్ట్రాల నెట్‌వర్క్ ఆసుపత్రులలో మాత్రమే వర్తిస్తుంది; దేశవ్యాప్తంగా ఏ ప్రైవేట్ ఆసుపత్రిలోనైనా ఉచిత చికిత్స వర్తించదు.
 
-## 3. Eligibility Criteria (అర్హత నిబంధనలు)
-1. **Residency:** Must be a permanent resident of Andhra Pradesh.
-2. **Ration / Rice Card:** Possession of an active White Ration Card or BPL Rice Card issued by the Civil Supplies Department of Andhra Pradesh.
-3. **Income Ceiling:** Annual family income must be within below-poverty-line thresholds (annual household income up to Rs. 5,00,000 or holding Rice Card / YSR Pension card).
-4. **Landholding Ceiling:** Total agricultural landholding must be less than 35 acres (wet and dry combined) or less than 10 acres of wet land.
-5. **Municipal Property Tax:** Owning residential property with municipal tax assessment of less than 3,000 sq. ft. in urban areas.
-6. **Exclusions:** Regular government employees covered under the Employees Health Scheme (EHS) and families owning commercial/luxury four-wheelers (excluding taxis, tractors, autos) are excluded.
-* అర్హతలు: ఆంధ్రప్రదేశ్ నివాసి అయి ఉండాలి, తెల్ల రేషన్ కార్డు లేదా రైస్ కార్డు ఉండాలి, కుటుంబ వార్షిక ఆదాయం రూ. 5 లక్షల లోపు ఉండాలి, వ్యవసాయ భూమి 35 ఎకరాల లోపు (మాగాణి 10 ఎకరాల లోపు) ఉండాలి. ప్రభుత్వ ఉద్యోగులు ఈహెచ్‌ఎస్ (EHS) పరిధిలోకి వస్తారు.
+## 3. Beneficiary Eligibility Criteria (లబ్ధిదారుల అర్హత నిబంధనలు)
+* **Residency:** Permanent resident families of Andhra Pradesh.
+* **Qualifying Cards:** Families possessing a valid BPL White Ration Card / Rice Card, or an official Dr. NTR Vaidya Seva / Aarogyasri Health Card.
+* **Income Limit for Non-Cardholders:** Families without a card may qualify if verified annual family income is within state eligibility ceilings (benchmarked up to Rs. 5,00,000 per annum).
+* **Exclusions:** Regular government employees and pensioners covered under the Employees Health Scheme (EHS) are excluded.
+* **తెలుగు వివరణ:** అర్హతలు: ఆంధ్రప్రదేశ్ నివాసి అయి ఉండాలి; తెల్ల రేషన్ కార్డు / రైస్ కార్డు లేదా ఆరోగ్యశ్రీ హెల్త్ కార్డు ఉండాలి. కార్డు లేని వారికి వార్షిక కుటుంబ ఆదాయం నిర్ణీత పరిమితికి (రూ. 5 లక్షల లోపు) లోబడి ఉండాలి. ప్రభుత్వ ఉద్యోగుల ఆరోగ్య పథకం (EHS) కింద రక్షణ పొందుతున్న వారు మినహాయింపు.
 
-## 4. How to Avail Treatment at Empaneled Hospitals (చికిత్స పొందే విధానం)
-* Beneficiaries can visit any empaneled government or private network hospital directly.
-* Approach the **Aarogya Mithra (ఆరోగ్య మిత్ర)** helpdesk located at the entrance of the network hospital.
-* Present the patient's Aadhaar Card, Rice Card, or NTR Vaidya Seva Digital Health Card.
-* Aarogya Mithra registers the patient, facilitates doctor consultation, generates online pre-authorization with the Trust, and ensures zero payment throughout the hospital stay.
-
-## 5. Contact & Status Verification (సంప్రదింపుల వివరాలు)
-* State 24x7 Toll-Free Healthcare Helpline: **104**.
-* Official Web Portal: `https://drntrvaidyaseva.ap.gov.in`.
-* Hospital search, pre-auth tracking, and card status can be checked online or via the local Village/Ward Secretariat (Grama Sachivalayam).
+## 4. How to Access Services (సేవలు పొందే విధానం)
+* Beneficiaries visit the **Aarogyamithra Help Desk** at any empaneled government or private network hospital with their Rice Card or Aadhaar Card.
+* The Aarogyamithra verifies patient identity, coordinates diagnostic evaluation, and submits pre-authorization requests to the Trust.
+* **In Emergencies:** In acute life-threatening situations, dial **108** immediately; citizens should not delay emergency hospital visits to search for physical cards.
+* Official Trust Portal: `https://drntrvaidyaseva.ap.gov.in`.
+* 24x7 Toll-Free Healthcare Helpline: **104**.
