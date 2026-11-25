@@ -43,13 +43,13 @@ export default function DocumentAnalysis({ language, isOffline }: DocumentAnalys
       return;
     }
 
-    // Validate type (PDF, JPG, PNG)
-    const validTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
+    // Validate type (PDF, JPG, PNG, WebP)
+    const validTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg", "image/webp"];
     if (!validTypes.includes(selectedFile.type)) {
       setError(
         isTe
-          ? "కేవలం PDF, JPG, లేదా PNG ఫైళ్లు మాత్రమే మద్దతు ఇవ్వబడతాయి."
-          : "Only PDF, JPG, or PNG files are supported."
+          ? "కేవలం PDF, JPG, PNG, లేదా WebP ఫైళ్లు మాత్రమే మద్దతు ఇవ్వబడతాయి."
+          : "Only PDF, JPG, PNG, or WebP files are supported."
       );
       return;
     }
@@ -201,7 +201,7 @@ export default function DocumentAnalysis({ language, isOffline }: DocumentAnalys
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
             style={{ display: "none" }}
             onChange={handleFileChange}
           />
@@ -232,8 +232,8 @@ export default function DocumentAnalysis({ language, isOffline }: DocumentAnalys
               </p>
               <small className="dropzone-sub-text">
                 {isTe
-                  ? "మద్దతు గల ఫార్మాట్లు: PDF, JPG, PNG (గరిష్టంగా 10 MB)"
-                  : "Supported Formats: PDF, JPG, PNG (Maximum 10 MB)"}
+                  ? "మద్దతు గల ఫార్మాట్లు: PDF, JPG, PNG, WebP (గరిష్టంగా 10 MB)"
+                  : "Supported Formats: PDF, JPG, PNG, WebP (Maximum 10 MB)"}
               </small>
             </div>
           )}

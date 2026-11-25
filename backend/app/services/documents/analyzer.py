@@ -17,7 +17,7 @@ from .field_parser import (
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 
-ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
 
 ALLOWED_MIME_TYPES = {
     "application/pdf",
@@ -26,6 +26,7 @@ ALLOWED_MIME_TYPES = {
     "image/png",
     "image/pjpeg",
     "image/x-png",
+    "image/webp",
 }
 
 # Magic byte signatures
@@ -72,7 +73,7 @@ class InvalidFileTypeError(DocumentAnalysisError):
     def __init__(self, detail: str):
         super().__init__(
             code="INVALID_FILE_TYPE",
-            message=f"Unsupported file format. Only PDF, JPG, and PNG are accepted. {detail}",
+            message=f"Unsupported file format. Only PDF, JPG, PNG, and WebP are accepted. {detail}",
             status_code=400,
         )
 
@@ -83,7 +84,7 @@ def validate_file_upload(
     """Validate upload size, file extension, MIME type, and magic bytes.
 
     Returns:
-        Normalized file category: 'pdf', 'jpeg', or 'png'.
+        Normalized file category: 'pdf', 'jpeg', 'png', or 'webp'.
     """
     if len(content) == 0:
         raise DocumentAnalysisError(
@@ -98,14 +99,14 @@ def validate_file_upload(
     _, ext = os.path.splitext(filename.lower())
     if ext not in ALLOWED_EXTENSIONS:
         raise InvalidFileTypeError(
-            f"Received extension '{ext}'. Only .pdf, .jpg, .jpeg, and .png are permitted."
+            f"Received extension '{ext}'. Only .pdf, .jpg, .jpeg, .png, and .webp are permitted."
         )
 
     if content_type:
         clean_mime = content_type.lower().split(";")[0].strip()
         if clean_mime not in ALLOWED_MIME_TYPES:
             raise InvalidFileTypeError(
-                f"Received MIME type '{clean_mime}'. Expected application/pdf, image/jpeg, or image/png."
+                f"Received MIME type '{clean_mime}'. Expected application/pdf, image/jpeg, image/png, or image/webp."
             )
 
     # Magic byte check
@@ -115,9 +116,11 @@ def validate_file_upload(
         norm_type = "jpeg"
     elif content.startswith(MAGIC_BYTES["png"]):
         norm_type = "png"
+    elif content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        norm_type = "webp"
     else:
         raise InvalidFileTypeError(
-            "File header does not match expected PDF, JPG, or PNG magic byte signature."
+            "File header does not match expected PDF, JPG, PNG, or WebP magic byte signature."
         )
 
     # Cross-verify extension with detected magic byte type
@@ -127,6 +130,8 @@ def validate_file_upload(
         raise InvalidFileTypeError("File has JPEG content but non-JPEG extension.")
     if norm_type == "png" and ext != ".png":
         raise InvalidFileTypeError("File has PNG content but non-PNG extension.")
+    if norm_type == "webp" and ext != ".webp":
+        raise InvalidFileTypeError("File has WebP content but non-WebP extension.")
 
     return norm_type
 

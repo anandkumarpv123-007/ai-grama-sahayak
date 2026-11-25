@@ -12,6 +12,7 @@ Key principles:
 """
 
 import io
+import os
 import logging
 from typing import Tuple, List, Optional
 from PIL import Image
@@ -21,6 +22,16 @@ logger = logging.getLogger(__name__)
 # Safe extraction limits
 MAX_PDF_PAGES = 20
 MAX_EXTRACTED_TEXT_LENGTH = 100_000
+MAX_IMAGE_DIMENSION = 3000
+
+
+def _get_tessdata_path() -> Optional[str]:
+    """Locate local tessdata directory with eng.traineddata and tel.traineddata."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    td_path = os.path.join(base_dir, "tessdata")
+    if os.path.exists(os.path.join(td_path, "eng.traineddata")):
+        return td_path
+    return None
 
 
 def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
@@ -79,7 +90,27 @@ def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
         if combined_text:
             return combined_text, warnings
 
-        # If combined text is empty in PyMuPDF, check if pypdf has any text layer
+        # If combined digital text is empty in PyMuPDF, attempt OCR on scanned PDF pages
+        td = _get_tessdata_path()
+        if td:
+            try:
+                ocr_pages = []
+                pages_to_ocr = min(total_pages, 5)
+                for i in range(pages_to_ocr):
+                    page = doc[i]
+                    tp = page.get_textpage_ocr(language="eng+tel", tessdata=td, dpi=150)
+                    page_txt = page.get_text(textpage=tp) or ""
+                    if page_txt.strip():
+                        ocr_pages.append(page_txt.strip())
+                ocr_combined = "\n".join(ocr_pages).strip()
+                if ocr_combined:
+                    warnings.append(
+                        "Document text extracted via Optical Character Recognition (OCR) for scanned PDF. "
+                        "Please verify critical details against the original physical certificate."
+                    )
+                    return ocr_combined, warnings
+            except Exception as e:
+                logger.debug("Scanned PDF embedded OCR failed: %s; falling back to pypdf", str(e))
     except Exception as e:
         logger.debug("PyMuPDF extraction unavailable or failed: %s; falling back to pypdf", str(e))
 
@@ -140,10 +171,11 @@ def extract_text_from_pdf(content: bytes) -> Tuple[str, List[str]]:
 
 
 def extract_text_from_image(content: bytes, filename: str = "") -> Tuple[str, List[str]]:
-    """Inspect and extract text from JPG/PNG image content in memory.
+    """Inspect and extract text from JPG/PNG/WebP image content in memory.
 
-    Strictly visual: does NOT treat PNG metadata chunks as document text.
-    If OCR is unavailable, returns empty text with an explicit warning.
+    Uses embedded PyMuPDF OCR (with English and Telugu tessdata) and Pillow normalization.
+    Strictly visual: does NOT treat image metadata chunks as document text.
+    If OCR is unavailable or image is unreadable, returns empty text with an explicit warning.
 
     Returns:
         (extracted_text, warnings_list)
@@ -159,16 +191,47 @@ def extract_text_from_image(content: bytes, filename: str = "") -> Tuple[str, Li
         warnings.append(f"Image validation failed: {str(e)}. File may be corrupted.")
         return "", warnings
 
-    # Attempt OCR if an engine (e.g., pytesseract) is installed
-    ocr_text = ""
+    # Normalize image mode to RGB and enforce safe dimension bound
     try:
-        import pytesseract  # type: ignore
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        if img.width > MAX_IMAGE_DIMENSION or img.height > MAX_IMAGE_DIMENSION:
+            img.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
+    except Exception as e:
+        warnings.append(f"Image preprocessing warning: {str(e)}")
 
-        ocr_text = pytesseract.image_to_string(img).strip()
-    except Exception:
-        pass
+    ocr_text = ""
+    td = _get_tessdata_path()
+
+    # 1. Attempt PyMuPDF embedded OCR (self-contained, no external tesseract.exe needed)
+    if td:
+        try:
+            import pymupdf
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            png_bytes = buf.getvalue()
+
+            pdf_doc = pymupdf.open()
+            pdf_page = pdf_doc.new_page(width=img.width, height=img.height)
+            pdf_page.insert_image(pymupdf.Rect(0, 0, img.width, img.height), stream=png_bytes)
+            tp = pdf_page.get_textpage_ocr(language="eng+tel", tessdata=td, dpi=150)
+            ocr_text = pdf_page.get_text(textpage=tp).strip()
+        except Exception as e:
+            logger.debug("PyMuPDF embedded OCR failed: %s; trying pytesseract fallback", str(e))
+
+    # 2. Fallback to pytesseract if installed and embedded OCR produced nothing
+    if not ocr_text:
+        try:
+            import pytesseract  # type: ignore
+            ocr_text = pytesseract.image_to_string(img).strip()
+        except Exception:
+            pass
 
     if ocr_text:
+        warnings.append(
+            "Document text extracted via Optical Character Recognition (OCR). "
+            "Please verify critical details against the original physical certificate."
+        )
         return ocr_text, warnings
 
     warnings.append(

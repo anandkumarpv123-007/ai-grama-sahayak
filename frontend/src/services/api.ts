@@ -34,6 +34,7 @@ export interface ChatResponse {
   needs_follow_up: boolean;
   follow_up_questions: string[];
   safety_notice: string | null;
+  service_action?: { action: string; service_type?: string; district?: string } | null;
 }
 
 export interface VoiceTranscribeResponse {

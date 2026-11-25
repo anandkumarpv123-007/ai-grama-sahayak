@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.common import AssistantIdentifier, LanguageCode, Source
 
@@ -51,4 +51,8 @@ class ChatResponse(BaseModel):
     safety_notice: Optional[str] = Field(
         default=None,
         description="Domain-specific advisory or emergency guidance if applicable",
+    )
+    service_action: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional interactive action payload for navigating to nearby services or tools",
     )

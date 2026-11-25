@@ -93,10 +93,15 @@ def sanitize_english_text(text: str) -> str:
     # Remove empty parentheticals left behind like " ()" or " ( )"
     cleaned = re.sub(r"\s*\(\s*\)", "", cleaned)
     cleaned = re.sub(r"\s*\[\s*\]", "", cleaned)
-    # Normalize multiple whitespace
+    # Normalize multiple whitespace and orphan punctuation fragments
     lines = []
     for line in cleaned.split("\n"):
         l = re.sub(r"[ \t]+", " ", line).strip()
+        l = re.sub(r"^[\s,\.\-•:;]+", "", l).strip()
+        l = re.sub(r"[\s,\.\-•:;]+$", "", l).strip()
+        # Drop lines with fewer than 3 English alphabetic characters
+        if len(re.findall(r"[a-zA-Z]", l)) < 3:
+            continue
         lines.append(l)
     return "\n".join(lines).strip()
 

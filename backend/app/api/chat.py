@@ -358,6 +358,158 @@ def _handle_unspecified_scheme_application(language: LanguageCode) -> Dict[str, 
     }
 
 
+def _detect_apssdc_query(query: str) -> bool:
+    """Detects inquiries regarding APSSDC, technical skills, or vocational training."""
+    q_lower = query.lower()
+    q_norm = normalize_text(query)
+    apssdc_terms = [
+        "apssdc", "technical skill", "skill training", "skill development",
+        "technical training", "vocational training", "skill program",
+        "నైపుణ్యాభివృద్ధి", "స్కిల్ డెవలప్‌మెంట్", "సాంకేతిక శిక్షణ", "నైపుణ్య శిక్షణ",
+    ]
+    return any(t in q_lower or t in q_norm for t in apssdc_terms)
+
+
+def _handle_apssdc_query(language: LanguageCode) -> Dict[str, Any]:
+    """Provides honest, verified information about APSSDC technical skill programs."""
+    if language == LanguageCode.TE:
+        answer = (
+            "ఆంధ్రప్రదేశ్ రాష్ట్ర నైపుణ్యాభివృద్ధి సంస్థ (APSSDC) రాష్ట్రంలోని విద్యార్థులు మరియు నిరుద్యోగ యువతకు ఉపాధి ఆధారిత సాంకేతిక మరియు వృత్తి నైపుణ్య శిక్షణ కార్యక్రమాలను సమన్వయం చేస్తుంది.\n\n"
+            "**ముఖ్యమైన వ్యత్యాసం:**\n"
+            "• **నైపుణ్య శిక్షణ vs. స్కాలర్‌షిప్‌లు:** APSSDC కార్యక్రమాలు పరిశ్రమలకు అవసరమైన సాంకేతిక శిక్షణ మరియు ఉపాధి అవకాశాలపై దృష్టి సారిస్తాయి; ఇవి నగదు లేదా విద్యా స్కాలర్‌షిప్‌లు కావు. అకడమిక్ చదువుల స్కాలర్‌షిప్‌ల కొరకు జగనన్న విద్యా దీవెన (ఫీజు రీయింబర్స్‌మెంట్), వసతి దీవెన లేదా తల్లికి వందనం పథకాలను పరిశీలించండి.\n\n"
+            "**ధృవీకరించబడిన APSSDC వివరాలు:**\n"
+            "• **శిక్షణా రంగాలు:** సాంకేతిక రంగాలు (IT, కంప్యూటర్ సైన్స్, ఎమర్జింగ్ టెక్నాలజీస్), పరిశ్రమల ఆధారిత వృత్తి నైపుణ్యాలు మరియు స్వయం ఉపాధి శిక్షణ.\n"
+            "• **ప్రత్యక్ష వివరాలు:** నిర్దిష్ట కోర్సుల బ్యాచ్‌లు, ఫీజు మినహాయింపులు, తరగతుల ప్రారంభ తేదీలు మరియు శిక్షణా కేంద్రాల జాబితా జిల్లాల వారీగా మరియు అధికారిక నోటిఫికేషన్ల ఆధారంగా మారుతూ ఉంటాయి.\n"
+            "• **అధికారికంగా దరఖాస్తు చేసుకునే విధానం:**\n"
+            "  - APSSDC అధికారిక పోర్టల్ సందర్శించండి: https://www.apssdc.in\n"
+            "  - AP స్కిల్ యూనివర్స్ (Skill Universe) పోర్టల్ ద్వారా ప్రస్తుత బ్యాచ్‌లలో నమోదు చేసుకోండి.\n"
+            "  - మీ స్థానిక గ్రామ/వార్డు సచివాలయంలోని విద్య మరియు డేటా ప్రాసెసింగ్ కార్యదర్శిని (Education Assistant) సంప్రదించి స్కిల్ సెన్సస్ వివరాలు తెలుసుకోండి.\n\n"
+            "మీ ప్రస్తుత విద్యార్హత (ఉదా: డిగ్రీ, ఇంజనీరింగ్, ఐటీఐ/డిప్లొమా) మరియు మీరు ఆసక్తి ఉన్న రంగాన్ని తెలియజేయండి."
+        )
+        follow_ups = [
+            "విద్యా దీవెన మరియు వసతి దీవెన స్కాలర్‌షిప్ వివరాలు తెలుసుకోవాలనుకుంటున్నారా?",
+            "గ్రామ సచివాలయంలో నైపుణ్య గణన (Skill Census) ప్రక్రియ గురించి సమాచారం కావాలా?",
+            "విద్యార్థుల ఇంటర్న్‌షిప్‌ల కోసం చూస్తున్నారా లేక ఉద్యోగ నియామక శిక్షణ కోసమా?",
+        ]
+        safety_notice = (
+            "నైపుణ్యాభివృద్ధి సలహా: శిక్షణా కోర్సులు మరియు బ్యాచ్‌ల వివరాల కోసం అధికారిక వెబ్‌సైట్ https://www.apssdc.in ను మాత్రమే సంప్రదించండి. అనధికార వ్యక్తులకు లేదా ప్రైవేట్ ఏజెంట్లకు ఎటువంటి రుసుములు చెల్లించవద్దు."
+        )
+    else:
+        answer = (
+            "The Andhra Pradesh State Skill Development Corporation (APSSDC) coordinates technical, employability, and vocational skill training programs for youth, students, and jobseekers across Andhra Pradesh.\n\n"
+            "**Key Distinction:**\n"
+            "• **Skill Training vs. Scholarships:** APSSDC programs focus on skill development, industry internships, and employment enablement; they do not provide direct academic financial scholarships. For academic scholarships, please consult state educational welfare programs like Jagananna Vidya Deevena (full tuition fee reimbursement) or Thalliki Vandanam.\n\n"
+            "**Verified APSSDC Information:**\n"
+            "• **Scope:** Technical domains (IT, computer software, emerging technologies), manufacturing/industrial trades, and self-employment skill workshops.\n"
+            "• **Dynamic Batches:** Specific active course schedules, empanelled training centres, and eligibility criteria vary dynamically by district and official government notifications.\n"
+            "• **How to Verify and Apply:**\n"
+            "  - Visit the official APSSDC portal: https://www.apssdc.in\n"
+            "  - Explore active training drives via the AP Skill Universe portal.\n"
+            "  - Inquire with the Education & Data Processing Secretary at your local Grama / Ward Sachivalayam regarding local Skill Census and mobilization drives.\n\n"
+            "What is your current educational qualification (e.g., Engineering, Degree, ITI/Diploma) and preferred domain of training?"
+        )
+        follow_ups = [
+            "Would you like details on academic scholarships like Vidya Deevena and Vasathi Deevena?",
+            "Would you like information on citizen skill enrollment at Grama Sachivalayam?",
+            "Are you looking for student internships or jobseeker placement drives?",
+        ]
+        safety_notice = (
+            "APSSDC Advisory: Skill training offerings, batch schedules, and empanelled centres are updated dynamically on https://www.apssdc.in. Never pay unauthorized agents for government skill registrations."
+        )
+
+    return {
+        "answer": answer,
+        "sources": [],
+        "needs_follow_up": True,
+        "follow_up_questions": follow_ups,
+        "safety_notice": safety_notice,
+    }
+
+
+SCHOLARSHIP_TYPO_PATTERN = re.compile(
+    r"\b(?:avail[a-z]*\s+)?(?:scholar\s*ships?|schoalr\s*ships?|scolar\s*ships?|skolar\s*ships?)\b|"
+    r"స్కాలర్\s*షిప్|స్కాలర్‌షిప్|స్కాలర్‌షిప్‌లు|స్కాలర్షిప్‌లు",
+    re.IGNORECASE,
+)
+
+
+def _detect_generic_scholarship_query(query: str) -> bool:
+    """Detects general inquiries and typographical variants for scholarships."""
+    q_lower = query.lower()
+    if SCHOLARSHIP_TYPO_PATTERN.search(query):
+        return True
+    if any(p in q_lower for p in ["scholarship", "schoalrship", "scolarship"]):
+        return True
+    return False
+
+
+def _handle_generic_scholarship_query(language: LanguageCode) -> Dict[str, Any]:
+    """Provides structured, tiered scholarship options across school and higher education."""
+    sources = [
+        Source(
+            title="Thalliki Vandanam Scheme",
+            url="https://jnanabhumi.ap.gov.in",
+            publisher="Department of School Education, Government of Andhra Pradesh",
+            verified_at="2026-11-21",
+        ),
+        Source(
+            title="Jagananna Vidya Deevena & Vasathi Deevena",
+            url="https://jnanabhumi.ap.gov.in",
+            publisher="Department of Higher Education, Government of Andhra Pradesh",
+            verified_at="2026-11-21",
+        ),
+    ]
+
+    if language == LanguageCode.TE:
+        answer = (
+            "ఆంధ్రప్రదేశ్‌లో విద్యార్థుల కోసం ప్రభుత్వం అందిస్తున్న ప్రధాన స్కాలర్‌షిప్‌లు మరియు విద్యా ప్రోత్సాహక పథకాలు ఇక్కడ ఉన్నాయి:\n\n"
+            "1. **పాఠశాల విద్య (1 నుండి 12వ తరగతి):**\n"
+            "   • **తల్లికి వందనం:** పాఠశాలకు వెళ్లే ప్రతి అర్హత గల విద్యార్థి తల్లి బ్యాంకు ఖాతాలో ఏటా రూ. 15,000 ఆర్థిక సాయం జమ చేయబడుతుంది (కనీసం 75% పాఠశాల హాజరు తప్పనిసరి).\n"
+            "   • **సమగ్ర శిక్ష:** ప్రభుత్వ పాఠశాల విద్యార్థులకు ఉచిత పాఠ్యపుస్తకాలు, యూనిఫారాలు మరియు సమగ్ర విద్యా వనరులు.\n\n"
+            "2. **పోస్ట్-మెట్రిక్ & ఉన్నత విద్య (పాలిటెక్నిక్, ఐటీఐ, డిగ్రీ, ఇంజనీరింగ్, మెడిసిన్, పీజీ):**\n"
+            "   • **జగనన్న విద్యా దీవెన:** అర్హులైన ఉన్నత విద్యా విద్యార్థులకు పూర్తి కళాశాల ట్యూషన్ ఫీజు రీయింబర్స్‌మెంట్ తల్లుల ఖాతాలో జమ అవుతుంది (75% హాజరు మరియు వార్షిక కుటుంబ ఆదాయ నిబంధనల ప్రకారం).\n"
+            "   • **జగనన్న వసతి దీవెన:** హాస్టల్ మరియు భోజన ఖర్చుల నిమిత్తం ఏటా రూ. 20,000 వరకు రెండు విడతల్లో ఆర్థిక సహాయం (ఐటీఐకి రూ. 10,000, పాలిటెక్నిక్‌కి రూ. 15,000, డిగ్రీ/ఇంజనీరింగ్‌కి రూ. 20,000).\n\n"
+            "**ఖచ్చితమైన అర్హతలు మరియు దరఖాస్తు విధానం తెలపడానికి:**\n"
+            "మీరు ఏ చదువు చదువుతున్నారు? (ఉదాహరణకు: 1-12వ తరగతి పాఠశాల చదువా, లేక పాలిటెక్నిక్ / ఐటీఐ / కాలేజీ డిగ్రీయా) తెలియజేయండి."
+        )
+        follow_ups = [
+            "పాఠశాల విద్యార్థుల కోసం తల్లికి వందనం వివరాలు తెలుసుకోవాలనుకుంటున్నారా?",
+            "కాలేజీ ఫీజు రీయింబర్స్‌మెంట్ కోసం జగనన్న విద్యా దీవెన అర్హతలు కావాలా?",
+            "హాస్టల్ మరియు భోజన వసతి కోసం జగనన్న వసతి దీవెన వివరాలు కావాలా?",
+        ]
+        safety_notice = (
+            "స్కాలర్‌షిప్ సలహా: విద్యా పథకాల నమోదు మరియు వివరాల కోసం అధికారిక జ్ఞానభూమి పోర్టల్ (https://jnanabhumi.ap.gov.in) లేదా మీ స్థానిక గ్రామ/వార్డు సచివాలయాన్ని సంప్రదించండి."
+        )
+    else:
+        answer = (
+            "In Andhra Pradesh, the state government provides comprehensive educational financial assistance and scholarship support across various levels of education:\n\n"
+            "1. **School Education (Classes 1–12):**\n"
+            "   • **Thalliki Vandanam:** Annual financial assistance of Rs 15,000 deposited into the bank account of the mother of every eligible school-going student (Class 1 to 12) maintaining at least 75% school attendance.\n"
+            "   • **Samagra Shiksha:** Free textbooks, school uniforms, and inclusive educational resources for government school students.\n\n"
+            "2. **Post-Matric & Higher Education (Polytechnic, ITI, Degree, Engineering, Medicine, PG):**\n"
+            "   • **Jagananna Vidya Deevena:** Full tuition fee reimbursement for eligible post-matric students, credited directly to mothers' accounts to pay college fees (requires 75% attendance and family income eligibility within guidelines).\n"
+            "   • **Jagananna Vasathi Deevena:** Boarding and mess maintenance assistance of up to Rs 20,000 per year (released in two installments) for ITI (Rs 10,000), Polytechnic (Rs 15,000), and Degree/Engineering/Professional students (Rs 20,000).\n\n"
+            "**To guide you with the exact scheme requirements:**\n"
+            "What is your current level of education (e.g., School student Class 1–12, Polytechnic/ITI, or College/University Degree)?"
+        )
+        follow_ups = [
+            "Would you like details on Thalliki Vandanam for school students?",
+            "Would you like eligibility criteria for Jagananna Vidya Deevena (college fee reimbursement)?",
+            "Would you like details on Jagananna Vasathi Deevena (hostel/mess assistance)?",
+        ]
+        safety_notice = (
+            "Scholarship Advisory: Always apply for education schemes through the official Jnanabhumi portal (https://jnanabhumi.ap.gov.in) or your local Grama / Ward Sachivalayam."
+        )
+
+    return {
+        "answer": answer,
+        "sources": sources,
+        "needs_follow_up": True,
+        "follow_up_questions": follow_ups,
+        "safety_notice": safety_notice,
+    }
+
+
 def _handle_nearby_service_query(
     query: str,
     language: LanguageCode,
@@ -365,85 +517,61 @@ def _handle_nearby_service_query(
     district: Optional[str],
 ) -> Optional[Dict[str, Any]]:
     """
-    Detects nearby service discovery intent (Hospital/CHC or RBK/Sachivalayam).
+    Detects nearby service discovery intent (Hospital/CHC, RBK, or Grama Sachivalayam).
     For Hospital/CHC: queries substantiated AP public health directories.
     For RBK/Sachivalayam: honestly explains directory scope and provides authoritative portals.
+    Always includes an actionable service_action for frontend navigation.
     """
     q_norm = normalize_text(query)
     q_lower = query.lower()
 
     # Location intent indicators
     has_loc = any(w in q_lower or w in q_norm for w in [
-        "near", "nearest", "nearby", "where", "location", "address", "find",
+        "near", "nearest", "nearby", "where", "location", "address", "find", "locate",
         "సమీప", "దగ్గర", "ఎక్కడ", "చిరునామా", "కేంద్రం ఎక్కడ", "ఆసుపత్రి ఎక్కడ",
     ])
 
-    # 1. RBK / Sachivalayam indicators
-    has_office = any(w in q_lower or w in q_norm for w in [
-        "rbk", "rythu bharosa kendram", "sachivalayam", "village secretariat", "ward secretariat",
-        "ఆర్బీకే", "రైతు భరోసా కేంద్రం", "సచివాలయం", "గ్రామ సచివాలయం", "వార్డు సచివాలయం",
+    # Category indicators
+    has_rbk = any(w in q_lower or w in q_norm for w in [
+        "rbk", "rythu bharosa kendra", "rythu bharosa kendram",
+        "ఆర్బీకే", "రైతు భరోసా కేంద్రం", "రైతు భరోసా కేంద్రాలు",
     ])
-    is_local_office_intent = has_loc and has_office
-
-    # 2. Hospital / Healthcare indicators
-    has_health_target = any(w in q_lower or w in q_norm for w in [
-        "hospital", "hospitals", "clinic", "health centre", "health center", "chc", "phc",
-        "ఆసుపత్రి", "ఆసుపత్రులు", "హాస్పిటల్", "ఆరోగ్య కేంద్రం",
+    has_sachivalayam = any(w in q_lower or w in q_norm for w in [
+        "sachivalayam", "village secretariat", "ward secretariat",
+        "సచివాలయం", "గ్రామ సచివాలయం", "వార్డు సచివాలయం",
+    ])
+    has_phc_chc = any(w in q_lower or w in q_norm for w in [
+        "phc", "chc", "primary health", "community health",
+        "ఆరోగ్య కేంద్రం", "ప్రాథమిక ఆరోగ్య కేంద్రం",
+    ])
+    has_hospital = any(w in q_lower or w in q_norm for w in [
+        "hospital", "hospitals", "clinic", "health centre", "health center", "ggh", "kgh",
+        "ఆసుపత్రి", "ఆసుపత్రులు", "హాస్పిటల్", "బోధనాసుపత్రి",
     ])
     is_scheme_q = any(w in q_lower or w in q_norm for w in [
-        "vaidya seva", "aarogyasri", "pmjay", "ayushman bharat", "వైద్య సేవ", "ఆరోగ్యశ్రీ"
-    ])
-    is_hospital_intent = has_loc and has_health_target and not is_scheme_q
+        "vaidya seva", "aarogyasri", "pmjay", "ayushman bharat", "వైద్య సేవ", "ఆరోగ్యశ్రీ",
+    ]) and not has_hospital
 
-    if not is_hospital_intent and not is_local_office_intent:
+    if not has_loc and not any(w in q_lower for w in ["nearby", "where is", "nearest"]):
         return None
 
-    # Handle RBK / Sachivalayam nearby intent honestly
-    if is_local_office_intent:
-        if language == LanguageCode.TE:
-            answer = (
-                "మీ సమీపంలోని రైతు భరోసా కేంద్రం (RBK) లేదా గ్రామ/వార్డు సచివాలయం ఖచ్చితమైన చిరునామా తెలుసుకోవడానికి, "
-                "దయచేసి మీ జిల్లా, మండలం లేదా గ్రామం పేరును తెలియజేయండి.\n\n"
-                "స్థానిక సేవల కోసం:\n"
-                "• **గ్రామ/వార్డు సచివాలయం**: మీ స్థానిక గ్రామ లేదా వార్డు సచివాలయ కేంద్రాన్ని నేరుగా సందర్శించండి లేదా అధికారిక పోర్టల్ చూడండి: https://gramawardsachivalayam.ap.gov.in\n"
-                "• **రైతు భరోసా కేంద్రం (RBK)**: మీ గ్రామ సచివాలయ పరిధిలోని గ్రామ వ్యవసాయ సహాయకుడిని (VAA) సంప్రదించండి లేదా పోర్టల్ చూడండి: https://karshak.ap.gov.in\n\n"
-                "ఈ కేంద్రాల ద్వారా సంక్షేమ పథకాల నమోదు, ఈ-పంట (e-Crop) నమోదు మరియు వివిధ ప్రభుత్వ ధ్రువపత్రాల సేవలు పొందవచ్చు."
-            )
-            follow_ups = [
-                "గ్రామ సచివాలయంలో లభించే ప్రజా సేవల వివరాలు తెలుసుకోవాలనుకుంటున్నారా?",
-                "రైతు భరోసా కేంద్రంలో ఈ-పంట నమోదు ప్రక్రియ గురించి సమాచారం కావాలా?",
-            ]
-            safety_notice = (
-                "పౌర సేవల సలహా: ప్రభుత్వ సంక్షేమ సేవల దరఖాస్తులను మీ అధికారిక గ్రామ సచివాలయంలో మాత్రమే సమర్పించండి. "
-                "అనధికార వ్యక్తులకు లేదా మధ్యవర్తులకు ఎటువంటి రుసుములు చెల్లించవద్దు."
-            )
-        else:
-            answer = (
-                "To locate your nearest Rythu Bharosa Kendram (RBK) or Grama / Ward Sachivalayam, "
-                "please specify your district, mandal, or village in Andhra Pradesh.\n\n"
-                "To access local services:\n"
-                "• **Grama / Ward Sachivalayam**: Visit your local village or ward secretariat, or check the official citizen portal: https://gramawardsachivalayam.ap.gov.in\n"
-                "• **Rythu Bharosa Kendram (RBK)**: Contact your Village Agriculture Assistant (VAA) at your local village secretariat or check: https://karshak.ap.gov.in\n\n"
-                "These local centers provide official assistance for welfare scheme enrollment, e-Panta / e-Crop registration, and citizen certificates."
-            )
-            follow_ups = [
-                "Would you like details on citizen services available at Grama Sachivalayam?",
-                "Would you like information on e-Panta crop registration at RBKs?",
-            ]
-            safety_notice = (
-                "Citizen Advisory: Always access government services through official village secretariats or designated government portals. "
-                "Never pay unauthorized intermediaries."
-            )
+    if not (has_rbk or has_sachivalayam or has_phc_chc or has_hospital):
+        return None
 
-        return {
-            "answer": answer,
-            "sources": [],
-            "needs_follow_up": True,
-            "follow_up_questions": follow_ups,
-            "safety_notice": safety_notice,
-        }
+    if is_scheme_q:
+        return None
 
-    # Handle Hospital / Healthcare nearby intent
+    # Determine target category
+    if has_rbk:
+        target_type = "agriculture"
+    elif has_sachivalayam:
+        target_type = "secretariat"
+    elif has_phc_chc:
+        target_type = "community_health_centre"
+    else:
+        target_type = "hospital"
+
+    # Identify target district from query or request parameter
     target_district = district
     ap_districts = [
         "Kakinada", "Visakhapatnam", "Guntur", "Krishna", "Chittoor",
@@ -463,11 +591,109 @@ def _handle_nearby_service_query(
             target_district = d_map.get(d, d.capitalize())
             break
 
+    # 1. Handle Rythu Bharosa Kendra (RBK)
+    if target_type == "agriculture":
+        if language == LanguageCode.TE:
+            answer = (
+                "మీ సమీపంలోని రైతు భరోసా కేంద్రం (RBK) గ్రామ స్థాయిలో సేవలందిస్తుంది. ఖచ్చితమైన చిరునామా కోసం దయచేసి మీ జిల్లా, మండలం లేదా గ్రామం పేరును తెలియజేయండి:\n\n"
+                "• **స్థానిక నెట్‌వర్క్:** ఆంధ్రప్రదేశ్‌లోని ప్రతి రెవెన్యూ గ్రామంలోనూ రైతు భరోసా కేంద్రాలు పనిచేస్తున్నాయి. రైతులందరికీ ఈ-పంట (e-Crop) నమోదు, నాణ్యమైన విత్తనాలు, ఎరువులు మరియు పంట బీమా సేవలను గ్రామ స్థాయిలోనే అందిస్తారు.\n"
+                "• **డైరెక్టరీ పరిమితి:** రాష్ట్రవ్యాప్తంగా వేలాది గ్రామాలు ఉన్నందున, గ్రామ స్థాయి భౌగోళిక కోఆర్డినేట్లు (GPS) ఈ కేంద్రీకృత డైరెక్టరీలో నమోదు కాలేదు.\n"
+                "• **సంప్రదించవలసిన అధికారిక మార్గాలు:**\n"
+                "  - మీ గ్రామ సచివాలయంలోని గ్రామ వ్యవసాయ సహాయకుడిని (VAA) నేరుగా సంప్రదించండి.\n"
+                "  - వ్యవసాయ శాఖ అధికారిక పోర్టల్ చూడండి: https://karshak.ap.gov.in\n"
+                "  - గ్రామ/వార్డు సచివాలయం పోర్టల్ చూడండి: https://gramawardsachivalayam.ap.gov.in\n"
+                "  - ఇతర ప్రభుత్వ సేవల డైరెక్టరీ కోసం క్రింది బటన్ తాకండి."
+            )
+            follow_ups = [
+                "రైతు భరోసా కేంద్రంలో ఈ-పంట నమోదు ఎలా చేయాలో తెలుసుకోవాలనుకుంటున్నారా?",
+                "గ్రామ వ్యవసాయ సహాయకుడి (VAA) సేవల గురించి సమాచారం కావాలా?",
+                "అన్నదాత సుఖీభవ – పీఎం కిసాన్ పథక వివరాలు కావాలా?",
+            ]
+            safety_notice = "రైతు సలహా: పంట నమోదు మరియు వ్యవసాయ సేవల కోసం మీ స్థానిక RBK లేదా గ్రామ సచివాలయాన్ని మాత్రమే సంప్రదించండి."
+        else:
+            answer = (
+                "Rythu Bharosa Kendrams (RBKs) operate at the village level across Andhra Pradesh. To locate your local center, please specify your district, mandal, or village:\n\n"
+                "• **Village-Level Network:** An RBK is established in every revenue village in Andhra Pradesh, providing farmers with doorstep e-Crop registration, certified agricultural inputs, soil testing, and crop insurance assistance.\n"
+                "• **Central Directory Scope:** Because RBKs operate at every individual village jurisdiction across the state, village-level GPS coordinates are not maintained in this central urban/district facility directory.\n"
+                "• **How to Access Your RBK:**\n"
+                "  - Visit your local Grama Sachivalayam and consult the Village Agriculture Assistant (VAA).\n"
+                "  - Access the official agricultural portal: https://karshak.ap.gov.in\n"
+                "  - Access the Grama / Ward Sachivalayam portal: https://gramawardsachivalayam.ap.gov.in\n"
+                "  - Use the Nearby Services interface below to explore verified public service centers across AP districts."
+            )
+            follow_ups = [
+                "Would you like details on e-Crop registration at your local RBK?",
+                "Would you like information on PM Crop Insurance enrolment?",
+                "Would you like details on Annadata Sukhibhava – PM KISAN benefits?",
+            ]
+            safety_notice = "Farmer Advisory: Always perform e-Crop registration and scheme enrollments through your authorized local RBK or Grama Sachivalayam."
+
+        return {
+            "answer": answer,
+            "sources": [],
+            "needs_follow_up": True,
+            "follow_up_questions": follow_ups,
+            "safety_notice": safety_notice,
+            "service_action": {
+                "action": "open_nearby",
+                "service_type": "agriculture",
+                "district": target_district,
+            },
+        }
+
+    # 2. Handle Grama / Ward Sachivalayam
+    if target_type == "secretariat":
+        if language == LanguageCode.TE:
+            answer = (
+                "మీ సమీప గ్రామ / వార్డు సచివాలయం వివరాలు:\n\n"
+                "• **స్థానిక నెట్‌వర్క్:** ఆంధ్రప్రదేశ్‌లోని ప్రతి గ్రామ పంచాయతీ మరియు మున్సిపల్ వార్డు పరిధిలో గ్రామ/వార్డు సచివాలయాలు పనిచేస్తున్నాయి. పౌర ధ్రువీకరణ పత్రాలు (ఆదాయ, కుల ధ్రువపత్రాలు), పింఛన్లు మరియు సంక్షేమ పథకాల దరఖాస్తులు ఇక్కడే స్వీకరిస్తారు.\n"
+                "• **డైరెక్టరీ పరిమితి:** గ్రామ/వార్డు స్థాయి కేంద్రాల భౌగోళిక కోఆర్డినేట్లు ఈ కేంద్రీకృత డైరెక్టరీలో నమోదు కాలేదు.\n"
+                "• **అధికారిక సంప్రదింపు:**\n"
+                "  - అధికారిక పోర్టల్‌లో మీ సచివాలయాన్ని కనుగొనండి: https://gramawardsachivalayam.ap.gov.in\n"
+                "  - మీ వార్డు/గ్రామ పంచాయతీ కార్యాలయాన్ని నేరుగా సందర్శించండి.\n"
+                "  - జిల్లా వారీగా ఇతర ప్రభుత్వ ఆరోగ్య సౌకర్యాలను వీక్షించడానికి క్రింది బటన్ ఉపయోగించండి."
+            )
+            follow_ups = [
+                "గ్రామ సచివాలయంలో లభించే ధ్రువపత్రాల సేవల వివరాలు కావాలా?",
+                "ఎన్టీఆర్ భరోసా పింఛను దరఖాస్తు ప్రక్రియ గురించి తెలుసుకోవాలా?",
+            ]
+            safety_notice = "పౌర సేవల సలహా: ప్రభుత్వ సంక్షేమ సేవలకు మీ అధికారిక గ్రామ సచివాలయంలోని పంచాయతీ కార్యదర్శిని మాత్రమే సంప్రదించండి."
+        else:
+            answer = (
+                "Grama / Ward Sachivalayams operate across every village and municipal ward in Andhra Pradesh:\n\n"
+                "• **Local Network:** Andhra Pradesh has established secretariats in every village and ward to deliver over 500 citizen services at the doorstep, including caste/income certificates, social security pensions, and ration cards.\n"
+                "• **Central Directory Scope:** Village and ward secretariats are local administrative units; individual village-level GPS pins are not compiled in this central district directory.\n"
+                "• **Official Access:**\n"
+                "  - Locate your designated secretariat on the official portal: https://gramawardsachivalayam.ap.gov.in\n"
+                "  - Inquire directly at your local Panchayat or municipal office.\n"
+                "  - Use the Nearby Services interface below to view verified public health centers in your district."
+            )
+            follow_ups = [
+                "Would you like details on citizen services at Grama Sachivalayam?",
+                "Would you like to know how to apply for NTR Bharosa pension at the secretariat?",
+            ]
+            safety_notice = "Citizen Advisory: Apply for government certificates and welfare schemes exclusively through official Grama / Ward Sachivalayam staff."
+
+        return {
+            "answer": answer,
+            "sources": [],
+            "needs_follow_up": True,
+            "follow_up_questions": follow_ups,
+            "safety_notice": safety_notice,
+            "service_action": {
+                "action": "open_nearby",
+                "service_type": "secretariat",
+                "district": target_district,
+            },
+        }
+
+    # 3. Handle Hospital / Community Health Centre (CHC / PHC)
     if not target_district:
         if language == LanguageCode.TE:
             answer = (
-                "ఆంధ్రప్రదేశ్‌లోని ప్రభుత్వ ఆసుపత్రులు మరియు ఆరోగ్య కేంద్రాల వివరాలు తెలుసుకోవడానికి, "
+                "ఆంధ్రప్రదేశ్‌లోని ప్రభుత్వ ఆసుపత్రులు మరియు కమ్యూనిటీ ఆరోగ్య కేంద్రాల వివరాలు తెలుసుకోవడానికి, "
                 "దయచేసి మీ జిల్లా లేదా సమీప పట్టణం పేరును తెలియజేయండి (ఉదా: కాకినాడ, విశాఖపట్నం, గుంటూరు).\n\n"
+                "మీరు దిగువ ఉన్న బటన్‌ను క్లిక్ చేయడం ద్వారా నేరుగా జీపీఎస్ (GPS) లేదా జిల్లా ఎంపికతో సేవల డైరెక్టరీని తెరవవచ్చు.\n\n"
                 "అత్యవసర వైద్య సహాయం కోసం వెంటనే 108 (అంబులెన్స్) లేదా 104 (వైద్య సలహా) కు కాల్ చేయండి."
             )
             follow_ups = [
@@ -479,6 +705,7 @@ def _handle_nearby_service_query(
             answer = (
                 "To locate verified government hospitals and community health centres near you, "
                 "please specify your district or city in Andhra Pradesh (e.g., Kakinada, Visakhapatnam, Guntur, Kurnool).\n\n"
+                "You can also click the button below to open the Nearby Services directory and use device GPS or select your district directly.\n\n"
                 "For immediate emergency medical assistance, please dial 108 (Ambulance) or 104 (Health Advice Helpline)."
             )
             follow_ups = [
@@ -493,11 +720,18 @@ def _handle_nearby_service_query(
             "needs_follow_up": True,
             "follow_up_questions": follow_ups,
             "safety_notice": safety_notice,
+            "service_action": {
+                "action": "open_nearby",
+                "service_type": target_type,
+                "district": None,
+            },
         }
 
     # Target district is known: search verified health facilities
     try:
-        facilities = find_nearby_services(service_type="hospital", district=target_district)
+        facilities = find_nearby_services(service_type=target_type, district=target_district)
+        if not facilities and target_type == "community_health_centre":
+            facilities = find_nearby_services(service_type="hospital", district=target_district)
     except Exception:
         facilities = []
 
@@ -555,6 +789,11 @@ def _handle_nearby_service_query(
             "needs_follow_up": False,
             "follow_up_questions": follow_ups,
             "safety_notice": safety_notice,
+            "service_action": {
+                "action": "open_nearby",
+                "service_type": target_type,
+                "district": target_district,
+            },
         }
     else:
         if language == LanguageCode.TE:
@@ -580,6 +819,11 @@ def _handle_nearby_service_query(
             "needs_follow_up": True,
             "follow_up_questions": follow_ups,
             "safety_notice": safety_notice,
+            "service_action": {
+                "action": "open_nearby",
+                "service_type": target_type,
+                "district": target_district,
+            },
         }
 
 
@@ -752,7 +996,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         _save_chat_interaction_safely(conv_id, request, response)
         return response
 
-    # 11. Nearby service intent routing (Hospital or RBK / Sachivalayam)
+    # 11. Nearby service intent routing (Hospital, CHC, RBK, or Grama Sachivalayam)
     nearby_res = _handle_nearby_service_query(
         clean_message, request.language, request.state, request.district
     )
@@ -766,11 +1010,44 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
             needs_follow_up=nearby_res["needs_follow_up"],
             follow_up_questions=nearby_res["follow_up_questions"],
             safety_notice=nearby_res["safety_notice"],
+            service_action=nearby_res.get("service_action"),
         )
         _save_chat_interaction_safely(conv_id, request, response)
         return response
 
-    # 12. Route to specialist agent
+    # 12. Technical skill training / APSSDC inquiries
+    if _detect_apssdc_query(clean_message):
+        apssdc_res = _handle_apssdc_query(request.language)
+        response = ChatResponse(
+            conversation_id=conv_id,
+            answer=apssdc_res["answer"],
+            assistant=AssistantIdentifier.EDUCATION,
+            language=request.language,
+            sources=[],
+            needs_follow_up=True,
+            follow_up_questions=apssdc_res["follow_up_questions"],
+            safety_notice=apssdc_res["safety_notice"],
+        )
+        _save_chat_interaction_safely(conv_id, request, response)
+        return response
+
+    # 13. Generic scholarship inquiries & typographical variants (e.g., availble schoalrship)
+    if _detect_generic_scholarship_query(clean_message) and not detect_named_schemes(clean_message):
+        scholarship_res = _handle_generic_scholarship_query(request.language)
+        response = ChatResponse(
+            conversation_id=conv_id,
+            answer=scholarship_res["answer"],
+            assistant=AssistantIdentifier.EDUCATION,
+            language=request.language,
+            sources=scholarship_res.get("sources", []),
+            needs_follow_up=True,
+            follow_up_questions=scholarship_res["follow_up_questions"],
+            safety_notice=scholarship_res["safety_notice"],
+        )
+        _save_chat_interaction_safely(conv_id, request, response)
+        return response
+
+    # 14. Route to specialist agent
     result = agent_router.route_and_process(
         query=clean_message,
         assistant=routed_assistant,

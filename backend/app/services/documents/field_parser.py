@@ -364,16 +364,16 @@ def parse_fields_from_text(text: str, doc_type: str) -> Dict[str, Any]:
     if doc_type == "income_certificate":
         # Certificate Number (English & Telugu)
         cert_match = (
-            re.search(r"\b(IC[0-9]{8,14}|WIC[0-9]{8,14}|APIC[0-9]{8,14})\b", text)
+            re.search(r"\b(IC\s*[0-9]{8,14}|WIC\s*[0-9]{8,14}|APIC\s*[0-9]{8,14})\b", text)
             or re.search(
-                r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No|Application\s*Number|దరఖాస్తు\s*సంఖ్య|సర్టిఫికేట్\s*నంబర్)\s*[:\-]?\s*(IC[0-9]{8,14}|WIC[0-9]{8,14}|APIC[0-9]{8,14}|DEMO[0-9A-Za-z]+|[A-Za-z0-9\-_/]+)",
+                r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No|Application\s*Number|దరఖాస్తు\s*సంఖ్య|సర్టిఫికేట్\s*నంబర్)\s*[:\-]?\s*(IC\s*[0-9]{8,14}|WIC\s*[0-9]{8,14}|APIC\s*[0-9]{8,14}|DEMO[0-9A-Za-z]+|[A-Za-z0-9\-_/]+)",
                 text,
                 re.IGNORECASE,
             )
             or re.search(r"\b(DEMO[0-9A-Za-z]+)\b", text)
         )
         if cert_match:
-            fields["certificate_number"] = cert_match.group(1).strip()
+            fields["certificate_number"] = re.sub(r"\s+", "", cert_match.group(1).strip())
 
         # Applicant Name (English & Telugu)
         name_match = (
@@ -439,16 +439,16 @@ def parse_fields_from_text(text: str, doc_type: str) -> Dict[str, Any]:
 
     elif doc_type == "caste_certificate":
         cert_match = (
-            re.search(r"\b(CGC[0-9]{8,14}|CC[0-9]{8,14})\b", text)
+            re.search(r"\b(CGC\s*[0-9]{8,14}|CC\s*[0-9]{8,14})\b", text)
             or re.search(
-                r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No|దరఖాస్తు\s*సంఖ్య)\s*[:\-]?\s*(CGC[0-9]{8,14}|CC[0-9]{8,14}|DEMO[0-9A-Za-z]+|[A-Za-z0-9\-_/]+)",
+                r"(?:Certificate\s*(?:No|Number)|Application\s*No|Cert\s*No|దరఖాస్తు\s*సంఖ్య)\s*[:\-]?\s*(CGC\s*[0-9]{8,14}|CC\s*[0-9]{8,14}|DEMO[0-9A-Za-z]+|[A-Za-z0-9\-_/]+)",
                 text,
                 re.IGNORECASE,
             )
             or re.search(r"\b(DEMO[0-9A-Za-z]+)\b", text)
         )
         if cert_match:
-            fields["certificate_number"] = cert_match.group(1).strip()
+            fields["certificate_number"] = re.sub(r"\s+", "", cert_match.group(1).strip())
 
         name_match = (
             re.search(

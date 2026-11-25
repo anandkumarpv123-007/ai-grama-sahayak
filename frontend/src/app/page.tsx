@@ -71,6 +71,7 @@ type ChatMessage = {
   followUps?: string[];
   isError?: boolean;
   isCached?: boolean;
+  serviceAction?: { action: string; service_type?: string; district?: string } | null;
 };
 
 interface SpecialistAssistant {
@@ -207,6 +208,10 @@ export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [backendNotice, setBackendNotice] = useState<string | null>(null);
+
+  // Pre-selected nearby services navigation state
+  const [nearbyInitialCategory, setNearbyInitialCategory] = useState<string>("");
+  const [nearbyInitialDistrict, setNearbyInitialDistrict] = useState<string>("Kakinada");
 
   // Connectivity and Saved Questions State (Tasks 1, 2, 3)
   const [connectivity, setConnectivity] = useState<ConnectivityState>({
@@ -783,6 +788,7 @@ export default function Home() {
         sources: response.sources || [],
         safetyNotice: response.safety_notice || null,
         followUps: response.follow_up_questions || [],
+        serviceAction: response.service_action || null,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -975,7 +981,12 @@ export default function Home() {
 
       {/* View: Nearby Services */}
       {activeTab === "services" && (
-        <NearbyServices language={language} isOffline={connectivity.status !== "online"} />
+        <NearbyServices
+          language={language}
+          isOffline={connectivity.status !== "online"}
+          initialServiceType={nearbyInitialCategory}
+          initialDistrict={nearbyInitialDistrict}
+        />
       )}
 
       {/* View: Grievances */}
@@ -1314,6 +1325,42 @@ export default function Home() {
                               </div>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Interactive Nearby Services Navigation Button */}
+                      {message.serviceAction?.action === "open_nearby" && (
+                        <div className="nearby-service-action-box" style={{ marginTop: "12px", marginBottom: "8px" }}>
+                          <button
+                            type="button"
+                            className="primary-button"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "10px 18px",
+                              fontSize: "14px",
+                              borderRadius: "8px",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => {
+                              if (message.serviceAction?.service_type) {
+                                setNearbyInitialCategory(message.serviceAction.service_type);
+                              }
+                              if (message.serviceAction?.district) {
+                                setNearbyInitialDistrict(message.serviceAction.district);
+                              }
+                              setActiveTab("services");
+                            }}
+                          >
+                            <span>📍</span>
+                            <span>
+                              {isTe
+                                ? "సమీప సేవల డైరెక్టరీని తెరవండి"
+                                : "Open Nearby Services & Health Facilities"}
+                            </span>
+                            <span>→</span>
+                          </button>
                         </div>
                       )}
 

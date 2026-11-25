@@ -6,6 +6,8 @@ import { getNearbyServices, GovernmentService, ApiException } from "../services/
 interface NearbyServicesProps {
   language: string;
   isOffline?: boolean;
+  initialServiceType?: string;
+  initialDistrict?: string;
 }
 
 const SERVICE_TYPES = [
@@ -30,11 +32,27 @@ const VERIFIED_DISTRICTS = [
   { id: "Dr. B.R. Ambedkar Konaseema", labelEn: "Konaseema (Ramachandrapuram)", labelTe: "కోనసీమ (రామచంద్రపురం)" },
 ];
 
-export default function NearbyServices({ language, isOffline }: NearbyServicesProps) {
+export default function NearbyServices({
+  language,
+  isOffline,
+  initialServiceType,
+  initialDistrict,
+}: NearbyServicesProps) {
   const isTe = language === "Telugu";
 
-  const [serviceType, setServiceType] = useState<string>("");
-  const [district, setDistrict] = useState<string>("Kakinada");
+  const [prevServiceType, setPrevServiceType] = useState(initialServiceType);
+  const [serviceType, setServiceType] = useState<string>(initialServiceType || "");
+  if (initialServiceType !== prevServiceType) {
+    setPrevServiceType(initialServiceType);
+    setServiceType(initialServiceType || "");
+  }
+
+  const [prevDistrict, setPrevDistrict] = useState(initialDistrict);
+  const [district, setDistrict] = useState<string>(initialDistrict || "Kakinada");
+  if (initialDistrict !== prevDistrict) {
+    setPrevDistrict(initialDistrict);
+    setDistrict(initialDistrict || "Kakinada");
+  }
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [useGeo, setUseGeo] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -184,6 +202,44 @@ export default function NearbyServices({ language, isOffline }: NearbyServicesPr
             ))}
           </select>
         </div>
+
+        {serviceType === "agriculture" && (
+          <div className="statutory-notice-banner warning-tint" style={{ marginTop: "10px", marginBottom: "12px" }}>
+            <span className="notice-icon">🌾</span>
+            <div>
+              <strong>
+                {isTe ? "రైతు భరోసా కేంద్రం (RBK) గ్రామ స్థాయి పరిధి:" : "Village-Level Directory Scope (RBK):"}
+              </strong>
+              <p>
+                {isTe
+                  ? "ఆంధ్రప్రదేశ్‌లోని ప్రతి రెవెన్యూ గ్రామంలో రైతు భరోసా కేంద్రాలు పనిచేస్తున్నాయి. మీ గ్రామ పరిధిలోని ఈ-పంట నమోదు, విత్తనాలు మరియు సలహాల కొరకు మీ గ్రామ సచివాలయంలోని వ్యవసాయ సహాయకుడిని (VAA) సంప్రదించండి లేదా అధికారిక పోర్టల్ చూడండి: "
+                  : "Rythu Bharosa Kendrams (RBKs) operate at the local village level across all revenue villages in Andhra Pradesh. For local village e-Crop booking, inputs, and advisory, consult the Village Agriculture Assistant (VAA) at your village secretariat or visit: "}
+                <a href="https://karshak.ap.gov.in" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline", fontWeight: 600 }}>
+                  https://karshak.ap.gov.in ↗
+                </a>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {serviceType === "secretariat" && (
+          <div className="statutory-notice-banner warning-tint" style={{ marginTop: "10px", marginBottom: "12px" }}>
+            <span className="notice-icon">🏛️</span>
+            <div>
+              <strong>
+                {isTe ? "గ్రామ / వార్డు సచివాలయం స్థానిక పరిధి:" : "Local Secretariat Network Scope:"}
+              </strong>
+              <p>
+                {isTe
+                  ? "రాష్ట్రంలోని ప్రతి గ్రామ పంచాయతీ మరియు మున్సిపల్ వార్డు పరిధిలో సచివాలయాలు పనిచేస్తున్నాయి. పౌర సేవలు మరియు ధ్రువపత్రాల కోసం మీ స్థానిక కార్యాలయాన్ని సందర్శించండి లేదా అధికారిక పోర్టల్ చూడండి: "
+                  : "Grama and Ward Secretariats operate directly in every village and municipal ward across Andhra Pradesh. For citizen services, visit your local secretariat office or check: "}
+                <a href="https://gramawardsachivalayam.ap.gov.in" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline", fontWeight: 600 }}>
+                  https://gramawardsachivalayam.ap.gov.in ↗
+                </a>
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="location-options-box">
           <div className="location-toggle">
