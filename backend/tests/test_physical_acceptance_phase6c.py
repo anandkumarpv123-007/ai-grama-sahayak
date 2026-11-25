@@ -74,7 +74,7 @@ class TestPhysicalAcceptancePhase6C(unittest.TestCase):
 
         # Must not fabricate active course batches or empanelled centers
         self.assertIn("https://www.apssdc.in", data["answer"])
-        self.assertIn("Skill Universe", data["answer"])
+        self.assertIn("https://www.ap.gov.in", data["answer"])
         self.assertIn("Grama / Ward Sachivalayam", data["answer"])
         # Distinguishes skill training from financial scholarships
         self.assertIn("Scholarships", data["answer"])
@@ -119,6 +119,13 @@ class TestPhysicalAcceptancePhase6C(unittest.TestCase):
         self.assertIn("Samagra Shiksha", data["answer"])
         # Must prompt for education level
         self.assertIn("level of education", data["answer"].lower())
+
+        # Factual safety: must NOT assert flat unverified amounts or unconditional guarantees
+        self.assertNotIn("Rs 15,000", data["answer"])
+        self.assertNotIn("Rs. 15,000", data["answer"])
+        self.assertNotIn("Rs 20,000", data["answer"])
+        self.assertNotIn("Rs. 20,000", data["answer"])
+        self.assertNotIn("full tuition fee reimbursement for eligible", data["answer"].lower())
 
     def test_scholarship_discovery_available_scholarships(self):
         """Query: available scholarships"""
@@ -167,6 +174,10 @@ class TestPhysicalAcceptancePhase6C(unittest.TestCase):
         # Asks for education level in Telugu
         self.assertIn("ఏ చదువు చదువుతున్నారు", data["answer"])
 
+        # Factual safety: must NOT assert flat unverified amounts in Telugu
+        self.assertNotIn("రూ. 15,000", data["answer"])
+        self.assertNotIn("రూ. 20,000", data["answer"])
+
     # -------------------------------------------------------------
     # TASK 2: Nearby Services Integration Tests
     # -------------------------------------------------------------
@@ -190,6 +201,8 @@ class TestPhysicalAcceptancePhase6C(unittest.TestCase):
         self.assertIn("https://karshak.ap.gov.in", data["answer"])
         self.assertIn("Village Agriculture Assistant", data["answer"])
         self.assertIn("village level", data["answer"].lower())
+        # Factual safety: no blanket claim of every revenue village
+        self.assertNotIn("every revenue village", data["answer"].lower())
 
     def test_nearby_rythu_bharosa_kendra_te(self):
         """Query: నాకు దగ్గరలో రైతు భరోసా కేంద్రం ఎక్కడ ఉంది?"""
@@ -205,6 +218,8 @@ class TestPhysicalAcceptancePhase6C(unittest.TestCase):
         self.assertEqual(data["service_action"]["service_type"], "agriculture")
         self.assertIn("https://karshak.ap.gov.in", data["answer"])
         self.assertIn("వ్యవసాయ సహాయకుడిని", data["answer"])
+        # Factual safety: no blanket claim in Telugu
+        self.assertNotIn("ప్రతి రెవెన్యూ గ్రామంలోనూ", data["answer"])
 
     def test_nearby_hospital_en(self):
         """Query: Nearby hospital (with and without district)."""
@@ -371,6 +386,47 @@ class TestPhysicalAcceptancePhase6C(unittest.TestCase):
 
         res = analyze_document_content(scanned_pdf_bytes, "scanned.pdf", "application/pdf")
         self.assertEqual(res["document_type"], "income_certificate")
+
+    def test_actual_telugu_ocr_extraction(self):
+        """Verify actual Telugu OCR character extraction using PyMuPDF and tel.traineddata."""
+        from PIL import ImageFont
+        from app.services.documents.extractor import _get_tessdata_path
+
+        td_path = _get_tessdata_path()
+        self.assertIsNotNone(td_path, "Tessdata directory must be located")
+        tel_data = os.path.join(td_path, "tel.traineddata")
+        self.assertTrue(os.path.isfile(tel_data), "tel.traineddata must exist in tessdata directory")
+        self.assertGreater(os.path.getsize(tel_data), 1_000_000, "tel.traineddata must be complete")
+
+        # Locate a font supporting Telugu Unicode characters
+        font = None
+        for font_path in [
+            "C:/Windows/Fonts/Nirmala.ttc",
+            "C:/Windows/Fonts/NirmalaB.ttc",
+            "C:/Windows/Fonts/gautami.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf",
+        ]:
+            if os.path.exists(font_path):
+                try:
+                    font = ImageFont.truetype(font_path, 40)
+                    break
+                except Exception:
+                    continue
+
+        if font is None:
+            self.skipTest("No Telugu Unicode font available on host system to render synthetic Telugu image")
+
+        img = Image.new("RGB", (800, 200), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        d.text((40, 60), "ఆదాయ ధృవీకరణ పత్రము", fill=(0, 0, 0), font=font)
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        extracted, warnings = extract_text_from_image(buf.getvalue(), "telugu_doc.png")
+
+        self.assertTrue(len(extracted) > 0, "OCR should extract text from Telugu image")
+        has_telugu_chars = any(0x0C00 <= ord(c) <= 0x0C7F for c in extracted)
+        self.assertTrue(has_telugu_chars, f"Extracted text must contain authentic Telugu Unicode characters: {extracted!r}")
 
 
 if __name__ == "__main__":

@@ -212,8 +212,8 @@ export default function NearbyServices({
               </strong>
               <p>
                 {isTe
-                  ? "ఆంధ్రప్రదేశ్‌లోని ప్రతి రెవెన్యూ గ్రామంలో రైతు భరోసా కేంద్రాలు పనిచేస్తున్నాయి. మీ గ్రామ పరిధిలోని ఈ-పంట నమోదు, విత్తనాలు మరియు సలహాల కొరకు మీ గ్రామ సచివాలయంలోని వ్యవసాయ సహాయకుడిని (VAA) సంప్రదించండి లేదా అధికారిక పోర్టల్ చూడండి: "
-                  : "Rythu Bharosa Kendrams (RBKs) operate at the local village level across all revenue villages in Andhra Pradesh. For local village e-Crop booking, inputs, and advisory, consult the Village Agriculture Assistant (VAA) at your village secretariat or visit: "}
+                  ? "ఆంధ్రప్రదేశ్‌లోని గ్రామీణ ప్రాంతాలలో రైతు భరోసా కేంద్రాలు పనిచేస్తున్నాయి. మీ స్థానిక పరిధిలోని ఈ-పంట నమోదు, విత్తనాలు మరియు సలహాల కొరకు మీ గ్రామ సచివాలయంలోని వ్యవసాయ సహాయకుడిని (VAA) సంప్రదించండి లేదా అధికారిక పోర్టల్ చూడండి: "
+                  : "Rythu Bharosa Kendrams (RBKs) operate across rural Andhra Pradesh. For local village e-Crop booking, inputs, and advisory, consult the Village Agriculture Assistant (VAA) at your village secretariat or visit: "}
                 <a href="https://karshak.ap.gov.in" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline", fontWeight: 600 }}>
                   https://karshak.ap.gov.in ↗
                 </a>
@@ -231,8 +231,8 @@ export default function NearbyServices({
               </strong>
               <p>
                 {isTe
-                  ? "రాష్ట్రంలోని ప్రతి గ్రామ పంచాయతీ మరియు మున్సిపల్ వార్డు పరిధిలో సచివాలయాలు పనిచేస్తున్నాయి. పౌర సేవలు మరియు ధ్రువపత్రాల కోసం మీ స్థానిక కార్యాలయాన్ని సందర్శించండి లేదా అధికారిక పోర్టల్ చూడండి: "
-                  : "Grama and Ward Secretariats operate directly in every village and municipal ward across Andhra Pradesh. For citizen services, visit your local secretariat office or check: "}
+                  ? "రాష్ట్రంలోని గ్రామీణ మరియు పట్టణ ప్రాంతాలలో సచివాలయాలు పనిచేస్తున్నాయి. పౌర సేవలు మరియు ధ్రువపత్రాల కోసం మీ స్థానిక కార్యాలయాన్ని సందర్శించండి లేదా అధికారిక పోర్టల్ చూడండి: "
+                  : "Grama and Ward Secretariats operate across rural and urban Andhra Pradesh. For citizen services, visit your local secretariat office or check: "}
                 <a href="https://gramawardsachivalayam.ap.gov.in" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline", fontWeight: 600 }}>
                   https://gramawardsachivalayam.ap.gov.in ↗
                 </a>
