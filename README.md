@@ -13,7 +13,7 @@ In rural and semi-urban India, citizens frequently encounter substantial hurdles
 - **Documentation Complexity:** Understanding which identity, income, caste, or land records are required—and whether an existing certificate is valid—causes repeated visits to administrative offices.
 - **Unreliable Connectivity:** Rural communities frequently face intermittent cellular coverage, leading to disrupted transactions and lost progress on standard web portals.
 
-**AI Grama Sahayak** is an independent, voice-first citizen assistance platform designed to bridge these gaps for the citizens of Andhra Pradesh. It combines bilingual conversational guidance in **Telugu and English**, deterministic knowledge retrieval across 14 verified government schemes, in-memory document intelligence with local Optical Character Recognition (OCR), preliminary rule-based eligibility checks, nearby public service navigation, and bilingual grievance drafting.
+**AI Grama Sahayak** is an independent, voice-first citizen assistance platform designed to bridge these gaps for the citizens of Andhra Pradesh. It combines bilingual conversational guidance in **Telugu and English**, deterministic knowledge retrieval across 14 curated government knowledge documents, in-memory document intelligence with local Optical Character Recognition (OCR), preliminary rule-based eligibility checks, nearby public service navigation, and bilingual grievance drafting.
 
 > [!IMPORTANT]
 > **Prototype Classification Notice:**<br>
@@ -37,16 +37,16 @@ In rural and semi-urban India, citizens frequently encounter substantial hurdles
 | # | Feature | Implemented Capability | Implementation Boundary & Limitations |
 | :---: | :--- | :--- | :--- |
 | **1** | **Bilingual Citizen Assistance** | Conversational interaction in both English and Telugu across web and voice modalities. | Limited to English (`en`) and Telugu (`te`); does not support additional Indic languages. |
-| **2** | **Scheme Knowledge Retrieval** | Deterministic domain retrieval across 14 verified welfare schemes in Andhra Pradesh. | Grounded strictly in the 14 verified markdown documents; queries outside these schemes yield honest unavailability notices. |
+| **2** | **Scheme Knowledge Retrieval** | Deterministic domain retrieval across 14 curated government knowledge documents in Andhra Pradesh. | Grounded strictly in the 14 curated markdown documents; queries outside these schemes yield honest unavailability notices. |
 | **3** | **Domain-Specific Guidance** | Specialized query routing across Agriculture, Healthcare, Education, and Social Welfare. | Domain routing is rule- and keyword-guided; complex multi-domain queries are mapped to the primary identified domain. |
-| **4** | **Speech-to-Text & Text-to-Speech** | Integration with Sarvam AI (`saaras:v4` STT, `bulbul:v3` TTS) for high-accuracy Indic voice interaction. | Requires an active `SARVAM_API_KEY` and internet access for cloud synthesis; falls back to text or browser TTS when unconfigured. |
+| **4** | **Speech-to-Text & Text-to-Speech** | Integration with Sarvam AI (`saaras:v4` STT, `bulbul:v3` TTS) for high-accuracy Indic voice interaction. | Requires an active `SARVAM_API_KEY` and internet access for cloud voice services; falls back to text or browser speech synthesis where supported (browser speech synthesis availability and Telugu voice support vary across client browsers, operating systems, and devices). |
 | **5** | **Scholarship Discovery** | Typo-tolerant recognition for educational inquiries (e.g., `availble schoalrship`) with category breakdown. | Explains program structures and eligibility; does not guarantee active college admissions or budgetary disbursements. |
 | **6** | **Preliminary Eligibility Checks** | Deterministic criteria evaluation (landholding, income, age, residency) for key welfare schemes. | Provides preliminary advisory checks only; official entitlement is determined solely by government authorities upon scrutiny. |
-| **7** | **Digital PDF Document Parsing** | In-memory extraction of text and metadata from uploaded PDF certificates with resource limits. | Enforces a strict 20-page and 100,000-character safety limit; does not verify document cryptographic authenticity. |
-| **8** | **Local English & Telugu Image OCR** | Embedded PyMuPDF OCR powered by local Tesseract traineddata (`eng` and `tel`) in `backend/app/services/documents/tessdata/`. | Runs completely locally in memory; OCR accuracy depends heavily on image clarity, resolution, and lighting. |
-| **9** | **Multi-Format Document Handling** | Validates and processes PNG, JPEG, WebP, and scanned image-only PDFs using file magic bytes. | Maximum file upload size is bounded at 10 MB; corrupt or encrypted files are safely rejected. |
+| **7** | **Digital PDF Document Parsing** | In-memory extraction of text and metadata from uploaded PDF certificates with resource limits. | Enforces a 20-page and 100,000-character limit for digital PDFs; does not verify document cryptographic authenticity. |
+| **8** | **Local English & Telugu Image OCR** | Embedded PyMuPDF OCR powered by local Tesseract traineddata (`eng` and `tel`) in `backend/app/services/documents/tessdata/`. | Runs locally on the server; requires a running backend instance but does not require an external internet connection or cloud OCR API. OCR accuracy depends on image clarity and lighting. |
+| **9** | **Multi-Format Document Handling** | Validates and processes PNG, JPEG, WebP, and scanned image-only PDFs using file magic bytes. | Maximum file upload size is bounded at 10 MB; scanned PDF embedded OCR is bounded to the first 5 pages. |
 | **10** | **Sensitive Aadhaar Number Masking** | Automated regex-based redaction of 12-digit Aadhaar patterns to `XXXX-XXXX-1234` format. | Redacts displayed and logged numbers; does not connect to UIDAI for citizen identity verification. |
-| **11** | **Curated Facility Discovery** | Location lookups for RBKs, Grama/Ward Secretariats, Primary/Community Health Centres, and Hospitals. | Uses a curated directory of public facilities in Andhra Pradesh; does not cover every local sub-centre or private clinic. |
+| **11** | **Curated Facility Discovery** | Location lookups for RBKs, Grama/Ward Secretariats, Primary/Community Health Centres, and Hospitals. | Curated directory of 10 verified health facilities; supports RBK search intent with official links, but does not contain verified physical RBK records. |
 | **12** | **Chat-to-Nearby Navigation** | Conversational detection of location intents triggering quick-action navigation cards. | Provides approximate straight-line Haversine distances; does not provide turn-by-turn road navigation. |
 | **13** | **Bilingual Grievance Drafting** | Generates structured formal representation drafts in English and Telugu for administrative escalation. | Formats printable letters and submission instructions; does not transmit petitions directly to Spandana / MeeSeva. |
 | **14** | **Low-Network Assistance** | Client-side cached public Q&As and local query drafting for disconnected environments. | Caches public guidance only; real-time voice synthesis and server-side OCR require active network connectivity. |
@@ -82,8 +82,8 @@ flowchart TD
     end
 
     subgraph ProcessingEngines["Core Processing & Intelligence"]
-        RetrievalEngine["Deterministic Bilingual Retrieval\n(14 Verified Scheme Documents)"]
-        AnswerSynthesizer["Evidence-Grounded Response Synthesizer\n(Template-Based / Zero Hallucination)"]
+        RetrievalEngine["Deterministic Bilingual Retrieval\n(14 Curated Knowledge Documents)"]
+        AnswerSynthesizer["Evidence-Grounded Response Synthesizer\n(Template-Based / Reduces Unsupported Responses)"]
         EligibilityEngine["Rule-Based Preliminary Eligibility Assessor\n(Deterministic Logic)"]
         DocumentEngine["In-Memory Document Intelligence & OCR\n(PyMuPDF + Local Tesseract fast models)"]
         ServiceDirectory["Curated Public Service Directory\n(Haversine Distance Sorting)"]
@@ -96,7 +96,7 @@ flowchart TD
     end
 
     subgraph StorageAndModels["Local Storage & Optional Persistence"]
-        KBFiles[("Verified Knowledge Base\n14 Markdown Docs in knowledge_base/verified/")]
+        KBFiles[("Curated Knowledge Base\n14 Markdown Docs in knowledge_base/verified/")]
         TessData[("Local Tesseract Language Data\neng.traineddata & tel.traineddata")]
         PostgresDB[("Optional PostgreSQL\n(Pre-flight socket check & cooldown)")]
     end
@@ -187,6 +187,7 @@ ai-grama-sahayak/
 │   │       │   ├── extractor.py               # In-memory PDF & image text extraction
 │   │       │   ├── field_parser.py            # Regex-based certificate field extraction
 │   │       │   └── tessdata/                  # Bundled Tesseract fast language models
+│   │       │       ├── LICENSE                # Full Apache 2.0 license text
 │   │       │       ├── NOTICE                 # Apache 2.0 attribution notice
 │   │       │       ├── eng.traineddata        # English fast OCR model (~4.11 MB)
 │   │       │       └── tel.traineddata        # Telugu fast OCR model (~2.77 MB)
@@ -212,7 +213,7 @@ ai-grama-sahayak/
 ├── knowledge_base/
 │   ├── evaluation_dataset.json                # 24-query retrieval quality benchmark dataset
 │   ├── sources_manifest.csv                   # Provenance and source URLs for verified schemes
-│   └── verified/                              # 14 verified bilingual scheme documents
+│   └── verified/                              # 14 curated government knowledge documents
 │       ├── agriculture/                       # Annadata Sukhibhava, KCC, Crop Insurance, Soil Health
 │       ├── education/                         # Samagra Shiksha, Thalliki Vandanam, Vidya/Vasathi Deevena
 │       ├── healthcare/                        # 104/108 Emergency, Ayushman Bharat, Aarogyasri
@@ -233,7 +234,7 @@ Follow these step-by-step instructions to clone, configure, and run the prototyp
 
 ### 2. Clone and Checkout
 ```powershell
-git clone <repository_url> ai-grama-sahayak
+git clone https://github.com/anandkumarpv123-007/ai-grama-sahayak.git
 cd ai-grama-sahayak
 git checkout integration/round1
 ```
@@ -282,16 +283,19 @@ npm run dev
 
 ## Local OCR & Document Intelligence Setup
 
-The document intelligence engine in AI Grama Sahayak is engineered to operate **entirely locally in memory**, avoiding external OCR cloud API dependencies or transmitting sensitive documents to third-party endpoints.
+The document intelligence engine in AI Grama Sahayak operates **locally on the server in memory**, requiring a running backend instance but **no external internet connection or cloud OCR API**.
 
 ### Key Capabilities & Boundaries:
 - **Languages Supported:** English (`eng`) and Telugu (`tel`).
 - **File Formats Supported:** Scanned PDFs, PNG, JPEG, and WebP images.
 - **Execution Mechanism:** PyMuPDF (`fitz`) embedded Tesseract OCR engine dynamically accessing bundled language data located at `backend/app/services/documents/tessdata/`.
-- **Resource Bounds:** Enforces strict limits: max 20 PDF pages, max 100,000 characters extracted, max 10 MB file upload limit.
+- **Resource Bounds & Limits:**
+  - **General Digital PDFs:** Extracts embedded text up to **20 pages** and **100,000 characters**.
+  - **Scanned Image-Only PDFs:** Embedded OCR processing is bounded to the first **5 pages** (`min(total_pages, 5)`) to preserve responsiveness.
+  - **File Upload Size:** Hard ceiling of **10 MB** across all supported file types.
 - **Privacy Enforcement:** Extracts document text in-memory via `io.BytesIO`; sensitive 12-digit Aadhaar numbers are automatically masked to `XXXX-XXXX-1234`.
-- **Accuracy Notice:** OCR accuracy depends on the quality, angle, lighting, and resolution of uploaded images. Low-contrast or blurred documents return an honest `unverified_or_incomplete` status.
-- **Licensing & Attribution:** The bundled `eng.traineddata` and `tel.traineddata` files originate from `tesseract-ocr/tessdata_fast` and are distributed under the **Apache License 2.0**. Full attribution is maintained in [backend/app/services/documents/tessdata/NOTICE](file:///backend/app/services/documents/tessdata/NOTICE).
+- **Accuracy Notice:** OCR accuracy depends on image clarity, lighting, angle, and resolution. Low-contrast or blurred documents return an honest `unverified_or_incomplete` status.
+- **Licensing & Attribution:** The bundled `eng.traineddata` and `tel.traineddata` models originate from `tesseract-ocr/tessdata_fast` and are distributed under the **Apache License 2.0**. Both the full [LICENSE](file:///backend/app/services/documents/tessdata/LICENSE) text and the attribution [NOTICE](file:///backend/app/services/documents/tessdata/NOTICE) accompany the redistributed data.
 
 ---
 
@@ -366,13 +370,13 @@ For complete commands to reproduce all test suites, refer to [docs/TESTING.md](f
 
 ## Known Limitations
 
-1. **Limited Scheme Scope:** Grounded in 14 verified welfare schemes in Andhra Pradesh; schemes outside this corpus return honest unverified notices.
+1. **Limited Scheme Scope:** Grounded in 14 curated government knowledge documents covering key programs in Andhra Pradesh; schemes outside this corpus return honest unverified notices.
 2. **Dynamic Policy Updates:** Welfare criteria and budgetary amounts are governed by administrative Government Orders (G.O.s) that change periodically and require ongoing verification.
-3. **Curated Facility Directory:** The facility directory contains curated government centres (RBKs, Secretariats, CHCs, Hospitals) and does not represent an exhaustive census of all state facilities.
+3. **Curated Facility Directory Scope:** The facility directory contains curated government hospital and health centre records. While the system detects search intent for Rythu Bharosa Kendrams (RBKs) and Secretariats and provides guidance to contact the local Village Agriculture Assistant (VAA) and visit official portals (`https://karshak.ap.gov.in` / `https://gramawardsachivalayam.ap.gov.in`), it does not store verified physical records for individual RBK centres.
 4. **Approximate Distances:** Facility distances are calculated using the straight-line Haversine formula and do not reflect actual road driving distances or traffic conditions.
-5. **OCR Sensitivity:** Local OCR performance is dependent on image resolution, orientation, and lighting; hand-written certificates or degraded scans may not extract cleanly.
+5. **OCR Sensitivity & Limits:** Local OCR requires a running backend instance (no internet or cloud OCR API required). General digital PDFs process up to 20 pages (100k characters); scanned image-only PDFs run embedded OCR up to the first 5 pages. Accuracy depends on scan quality and resolution.
 6. **Language Support:** Implemented specifically for Telugu and English; does not support Hindi or other regional languages in Level 1.
-7. **Cloud Voice Dependency:** High-quality Indic voice transcription and synthesis depend on the external Sarvam AI cloud service; degraded connectivity requires falling back to text.
+7. **Cloud Voice Dependency:** High-quality Indic voice transcription and synthesis depend on the external Sarvam AI cloud service; degraded connectivity requires falling back to text. Browser-based speech synthesis is device- and platform-dependent and is not uniformly available for Telugu across all client devices and operating systems.
 8. **Low-Network Scope:** Offline capabilities provide pre-cached public guidance; real-time OCR and speech recognition cannot operate fully offline.
 9. **Preliminary Advisory Status:** Eligibility assessments evaluate user-declared criteria and do not verify bank linkages, e-KYC status, or field verification reports.
 10. **No Document Authentication:** The platform reads text from certificates but cannot detect forged documents, altered stamps, or invalid digital signatures.
@@ -385,7 +389,7 @@ For complete commands to reproduce all test suites, refer to [docs/TESTING.md](f
 | Member | Name | Primary Responsibilities & Contributions |
 | :---: | :--- | :--- |
 | **Member 1** | **Anand** | AI query routing, backend application architecture, evidence-grounded answer synthesis, clinical emergency safety interception, Sarvam voice service integration, and consolidated integration coordination. |
-| **Member 2** | **Durga Naik** | Bilingual knowledge base development (14 verified scheme documents), deterministic retrieval engineering, source manifest curation, and retrieval benchmark dataset evaluation. |
+| **Member 2** | **Durga Naik** | Bilingual knowledge base development (14 curated government knowledge documents), deterministic retrieval engineering, source manifest curation, and retrieval benchmark dataset evaluation. |
 | **Member 3** | **Yogitha** | Frontend Next.js development, responsive bilingual UI (en/te), voice recorder/player integration, and client-side low-network guidance caching. |
 | **Member 4** | **Radha** | Document intelligence pipeline, in-memory local OCR integration, preliminary scheme eligibility rule engine, nearby facility service directory, and related test development. |
 

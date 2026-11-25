@@ -37,7 +37,7 @@ The running prototype interfaces with external cloud services exclusively for In
   - **Speaker Persona:** `kavitha` (Indic voice profile)
   - **Purpose:** Synthesizes Telugu and English text responses into spoken audio for citizens.
   - **Mode:** Cloud REST API integration via `POST https://api.sarvam.ai/text-to-speech`.
-- **Graceful Fallback:** If `SARVAM_API_KEY` is not provided, the platform seamlessly degrades to client-side text interaction or browser speech synthesis (`window.speechSynthesis`).
+- **Graceful Fallback:** If `SARVAM_API_KEY` is not provided, the platform seamlessly degrades to client-side text interaction or browser speech synthesis (`window.speechSynthesis`) where supported. (Note: browser speech synthesis availability and Telugu voice support vary across client browsers, operating systems, and devices).
 
 ---
 
@@ -48,9 +48,9 @@ The running prototype interfaces with external cloud services exclusively for In
   - `backend/app/services/documents/tessdata/eng.traineddata` (English Fast Model, ~4.11 MB)
   - `backend/app/services/documents/tessdata/tel.traineddata` (Telugu Fast Model, ~2.77 MB)
 - **Origin:** Official GitHub repository `tesseract-ocr/tessdata_fast`.
-- **License:** Apache License, Version 2.0.
-- **Attribution Notice:** See [backend/app/services/documents/tessdata/NOTICE](file:///backend/app/services/documents/tessdata/NOTICE).
-- **Execution:** Executed locally in-memory via PyMuPDF (fitz) embedded OCR bindings. No external OCR cloud service or external API call is used for document extraction.
+- **License:** Apache License, Version 2.0 (accompanied by full [LICENSE](file:///backend/app/services/documents/tessdata/LICENSE) text and attribution [NOTICE](file:///backend/app/services/documents/tessdata/NOTICE)).
+- **Execution:** Executed locally on the server in-memory via PyMuPDF (fitz) embedded OCR bindings. Requires a running backend instance but does not require an external internet connection or cloud OCR API.
+- **Resource Limits:** Digital PDF extraction processes up to 20 pages; scanned image-only PDFs run embedded OCR up to the first 5 pages.
 
 ---
 
@@ -58,8 +58,8 @@ The running prototype interfaces with external cloud services exclusively for In
 
 | Component | Technology | Nature | External API Required? |
 | :--- | :--- | :--- | :--- |
-| **Response Reasoning** | Deterministic Template Synthesizer | Internal Rule Engine | **No** (Local logic) |
-| **Scheme Retrieval** | Domain-Scoped Text Search | Internal Ingestion & Matcher | **No** (Local markdown) |
+| **Response Reasoning** | Deterministic Template Synthesizer (reduces unsupported responses) | Internal Rule Engine | **No** (Local logic) |
+| **Scheme Retrieval** | Domain-Scoped Text Search (14 curated government knowledge documents) | Internal Ingestion & Matcher | **No** (Local markdown) |
 | **Eligibility Assessment**| Deterministic Criteria Engine | Internal Rule Matrix | **No** (Local logic) |
 | **Document OCR** | PyMuPDF + Tesseract fast models | Bundled Local Binaries | **No** (Local execution) |
 | **Speech-to-Text** | Sarvam AI `saaras:v4` | Cloud Speech API | **Yes** (Optional for voice) |
